@@ -4,6 +4,12 @@ import { BenchmarkDetail } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
+const formatMemory = (mb: number | null): string => {
+  if (mb === null) return "—";
+  if (mb < 1024) return `${mb} MB`;
+  return `${Math.round(mb / 1024)} GB`;
+};
+
 interface BenchmarkCompareProps {
   benchmarkIds: number[];
   onBack: () => void;
@@ -189,11 +195,7 @@ function BenchmarkCompare({ benchmarkIds, onBack }: BenchmarkCompareProps) {
           <tr>
             <th>Memory</th>
             {benchmarks.map((b) => (
-              <td key={b.id}>
-                {b.total_memory_mb
-                  ? Math.round(b.total_memory_mb / 1024) + " GB"
-                  : "—"}
-              </td>
+              <td key={b.id}>{formatMemory(b.total_memory_mb)}</td>
             ))}
           </tr>
           <tr>

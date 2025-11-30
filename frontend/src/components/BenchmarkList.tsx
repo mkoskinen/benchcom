@@ -1,6 +1,12 @@
 import { useState, useMemo } from "react";
 import { Benchmark } from "../types";
 
+const formatMemory = (mb: number | null): string => {
+  if (mb === null) return "—";
+  if (mb < 1024) return `${mb} MB`;
+  return `${Math.round(mb / 1024)} GB`;
+};
+
 type SortField = "hostname" | "architecture" | "cpu_model" | "cpu_cores" | "total_memory_mb" | "result_count" | "submitted_at";
 type SortDirection = "asc" | "desc";
 
@@ -148,9 +154,7 @@ function BenchmarkList({
                 {benchmark.cpu_cores || "—"}
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
-                {benchmark.total_memory_mb
-                  ? Math.round(benchmark.total_memory_mb / 1024) + " GB"
-                  : "—"}
+                {formatMemory(benchmark.total_memory_mb)}
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 {benchmark.result_count}

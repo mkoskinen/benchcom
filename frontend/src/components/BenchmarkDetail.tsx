@@ -5,6 +5,12 @@ import { useAuth } from "../context/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
+const formatMemory = (mb: number | null): string => {
+  if (mb === null) return "—";
+  if (mb < 1024) return `${mb} MB`;
+  return `${Math.round(mb / 1024)} GB`;
+};
+
 interface BenchmarkDetailProps {
   benchmarkId: number;
   onBack: () => void;
@@ -132,11 +138,7 @@ function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
           </tr>
           <tr>
             <th>Memory</th>
-            <td>
-              {benchmark.total_memory_mb
-                ? Math.round(benchmark.total_memory_mb / 1024) + " GB"
-                : "—"}
-            </td>
+            <td>{formatMemory(benchmark.total_memory_mb)}</td>
             <th>Kernel</th>
             <td colSpan={3}>{benchmark.kernel_version || "—"}</td>
           </tr>
