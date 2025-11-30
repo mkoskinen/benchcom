@@ -174,6 +174,8 @@ install_passmark() {
             lib_dir="/usr/lib/aarch64-linux-gnu"
         elif [ "$arch" = "x86_64" ]; then
             lib_dir="/usr/lib/x86_64-linux-gnu"
+        elif [ "$arch" = "armv7l" ] || [ "$arch" = "armhf" ]; then
+            lib_dir="/usr/lib/arm-linux-gnueabihf"
         fi
 
         if [ -n "$lib_dir" ] && [ -d "$lib_dir" ]; then
