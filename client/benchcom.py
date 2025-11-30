@@ -373,6 +373,25 @@ class BenchmarkRunner:
 
         self.log("")
 
+    def _get_sysbench_cmd(self, test: str, threads: int, time: int = 10, extra_args: List[str] = None) -> List[str]:
+        """Build sysbench command with version-appropriate syntax"""
+        version = self.tool_versions.get("sysbench", "")
+        # sysbench 0.4.x uses --test=, --num-threads=, --max-time=
+        # sysbench 1.x uses test, --threads=, --time=
+        is_legacy = version.startswith("0.") or version.startswith("sysbench 0.")
+
+        if is_legacy:
+            cmd = ["sysbench", f"--test={test}", f"--num-threads={threads}", f"--max-time={time}"]
+            if extra_args:
+                cmd.extend(extra_args)
+            cmd.append("run")
+        else:
+            cmd = ["sysbench", test, f"--threads={threads}", f"--time={time}"]
+            if extra_args:
+                cmd.extend(extra_args)
+            cmd.append("run")
+        return cmd
+
     def run_sysbench_cpu(self):
         """Run sysbench CPU benchmark"""
         if not self.check_command("sysbench"):
@@ -386,9 +405,7 @@ class BenchmarkRunner:
 
         # Single thread
         self.log("=== SYSBENCH CPU (1 thread) ===")
-        output, ret = self.run_command(
-            ["sysbench", "cpu", "--threads=1", "--time=10", "run"]
-        )
+        output, ret = self.run_command(self._get_sysbench_cmd("cpu", 1, 10))
         if ret == 0 and output:
             with open(self.output_dir / "sysbench_cpu_1t.txt", "w") as f:
                 f.write(output)
@@ -406,9 +423,7 @@ class BenchmarkRunner:
 
         # Multi-thread (all cores) - use consistent name regardless of core count
         self.log(f"=== SYSBENCH CPU ({self.cores} threads) ===")
-        output, ret = self.run_command(
-            ["sysbench", "cpu", f"--threads={self.cores}", "--time=10", "run"]
-        )
+        output, ret = self.run_command(self._get_sysbench_cmd("cpu", self.cores, 10))
         if ret == 0 and output:
             with open(self.output_dir / f"sysbench_cpu_{self.cores}t.txt", "w") as f:
                 f.write(output)
@@ -433,9 +448,16 @@ class BenchmarkRunner:
             return
 
         self.log("=== SYSBENCH MEMORY ===")
-        output, ret = self.run_command(
-            ["sysbench", "memory", "--memory-block-size=1K", "--memory-total-size=10G", "run"]
-        )
+        # Memory test needs extra args for block size and total size
+        version = self.tool_versions.get("sysbench", "")
+        is_legacy = version.startswith("0.") or version.startswith("sysbench 0.")
+
+        if is_legacy:
+            cmd = ["sysbench", "--test=memory", "--memory-block-size=1K", "--memory-total-size=10G", "run"]
+        else:
+            cmd = ["sysbench", "memory", "--memory-block-size=1K", "--memory-total-size=10G", "run"]
+
+        output, ret = self.run_command(cmd)
         if ret == 0 and output:
             with open(self.output_dir / "sysbench_memory.txt", "w") as f:
                 f.write(output)
