@@ -61,24 +61,24 @@ install_packages() {
     case $pkg_manager in
         dnf)
             echo "Installing benchmark dependencies via dnf..."
-            sudo dnf install -y p7zip p7zip-plugins openssl bc sysbench unzip curl ncurses-compat-libs python3-requests
+            sudo dnf install -y p7zip p7zip-plugins openssl bc sysbench unzip curl zstd ncurses-compat-libs python3-requests
             ;;
         apt)
             echo "Installing benchmark dependencies via apt..."
             sudo apt-get update
-            sudo apt-get install -y p7zip-full openssl bc sysbench unzip curl python3-requests
+            sudo apt-get install -y p7zip-full openssl bc sysbench unzip curl zstd python3-requests
             ;;
         pacman)
             echo "Installing benchmark dependencies via pacman..."
-            sudo pacman -Sy --noconfirm p7zip openssl bc sysbench unzip curl python-requests
+            sudo pacman -Sy --noconfirm p7zip openssl bc sysbench unzip curl zstd python-requests
             ;;
         zypper)
             echo "Installing benchmark dependencies via zypper..."
-            sudo zypper install -y p7zip openssl bc sysbench unzip curl python3-requests
+            sudo zypper install -y p7zip openssl bc sysbench unzip curl zstd python3-requests
             ;;
         brew)
             echo "Installing benchmark dependencies via Homebrew..."
-            brew install p7zip openssl bc sysbench unzip curl python3
+            brew install p7zip openssl bc sysbench unzip curl zstd python3
             pip3 install --user requests
             ;;
         *)
@@ -88,6 +88,7 @@ install_packages() {
             echo "  - bc"
             echo "  - sysbench"
             echo "  - unzip"
+            echo "  - zstd"
             echo "  - python3-requests"
             ;;
     esac

@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
-from fastapi.middleware.cors import CORSMiddleware
+import json
+import logging
 from datetime import timedelta, datetime
 from typing import List, Optional
-import json
+
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import db
@@ -10,6 +12,7 @@ from .schemas import (
     UserCreate,
     UserResponse,
     Token,
+    LoginRequest,
     BenchmarkRunCreate,
     BenchmarkRunResponse,
     BenchmarkRunDetail,
@@ -22,6 +25,36 @@ from .auth import (
     get_current_user_optional,
     require_auth_if_needed,
 )
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+MAX_LIMIT = 500  # Maximum allowed limit for pagination
+
+
+# Helper functions
+def parse_iso_datetime(dt_string: Optional[str]) -> Optional[datetime]:
+    """Parse ISO datetime string, stripping timezone for PostgreSQL timestamp."""
+    if not dt_string:
+        return None
+    try:
+        dt = datetime.fromisoformat(dt_string.replace("Z", "+00:00"))
+        return dt.replace(tzinfo=None)
+    except (ValueError, AttributeError):
+        return None
+
+
+def parse_jsonb_field(value) -> Optional[dict]:
+    """Parse JSONB field that may be string or dict."""
+    if not value:
+        return None
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -82,9 +115,9 @@ async def register(user: UserCreate):
 
 
 @app.post(f"{settings.API_V1_PREFIX}/login", response_model=Token)
-async def login(username: str, password: str):
+async def login(credentials: LoginRequest):
     """Login and get access token"""
-    user = await authenticate_user(username, password)
+    user = await authenticate_user(credentials.username, credentials.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -127,26 +160,9 @@ async def submit_benchmark(
     tags_json = json.dumps(benchmark.tags) if benchmark.tags else None
     dmi_json = json.dumps(benchmark.dmi_info) if benchmark.dmi_info else None
 
-    # Parse datetime strings if provided (strip timezone for PostgreSQL timestamp without time zone)
-    started_at = None
-    if benchmark.benchmark_started_at:
-        try:
-            dt = datetime.fromisoformat(
-                benchmark.benchmark_started_at.replace("Z", "+00:00")
-            )
-            started_at = dt.replace(tzinfo=None)  # Strip timezone info
-        except (ValueError, AttributeError):
-            started_at = None
-
-    completed_at = None
-    if benchmark.benchmark_completed_at:
-        try:
-            dt = datetime.fromisoformat(
-                benchmark.benchmark_completed_at.replace("Z", "+00:00")
-            )
-            completed_at = dt.replace(tzinfo=None)  # Strip timezone info
-        except (ValueError, AttributeError):
-            completed_at = None
+    # Parse datetime strings
+    started_at = parse_iso_datetime(benchmark.benchmark_started_at)
+    completed_at = parse_iso_datetime(benchmark.benchmark_completed_at)
 
     run_query = """
         INSERT INTO benchmark_runs (
@@ -218,7 +234,7 @@ async def submit_benchmark(
         )
     except Exception as e:
         # Don't fail the submission if stats refresh fails
-        print(f"Warning: stats refresh failed: {e}")
+        logger.warning(f"Stats refresh failed: {e}")
 
     return {"id": run_id, "message": "Benchmark submitted successfully"}
 
@@ -233,6 +249,7 @@ async def list_benchmarks(
     hostname: Optional[str] = None,
 ):
     """List benchmark runs"""
+    limit = min(limit, MAX_LIMIT)  # Enforce max limit
     where_clauses = []
     params = []
     param_count = 1
@@ -277,13 +294,7 @@ async def list_benchmarks(
     result = []
     for row in rows:
         row_dict = dict(row)
-        # Parse dmi_info from JSONB
-        if row_dict.get("dmi_info"):
-            row_dict["dmi_info"] = (
-                json.loads(row_dict["dmi_info"])
-                if isinstance(row_dict["dmi_info"], str)
-                else row_dict["dmi_info"]
-            )
+        row_dict["dmi_info"] = parse_jsonb_field(row_dict.get("dmi_info"))
         result.append(row_dict)
     return result
 
@@ -354,31 +365,15 @@ async def get_benchmark(
         # Keep user_id as None for non-privileged users
         run_dict["user_id"] = None
 
-    # Parse tags from JSONB
-    if run_dict.get("tags"):
-        run_dict["tags"] = (
-            json.loads(run_dict["tags"])
-            if isinstance(run_dict["tags"], str)
-            else run_dict["tags"]
-        )
-    # Parse dmi_info from JSONB
-    if run_dict.get("dmi_info"):
-        run_dict["dmi_info"] = (
-            json.loads(run_dict["dmi_info"])
-            if isinstance(run_dict["dmi_info"], str)
-            else run_dict["dmi_info"]
-        )
+    # Parse JSONB fields
+    run_dict["tags"] = parse_jsonb_field(run_dict.get("tags"))
+    run_dict["dmi_info"] = parse_jsonb_field(run_dict.get("dmi_info"))
 
     # Parse metrics JSON for each result
     parsed_results = []
     for r in results:
         r_dict = dict(r)
-        if r_dict.get("metrics"):
-            r_dict["metrics"] = (
-                json.loads(r_dict["metrics"])
-                if isinstance(r_dict["metrics"], str)
-                else r_dict["metrics"]
-            )
+        r_dict["metrics"] = parse_jsonb_field(r_dict.get("metrics"))
         parsed_results.append(r_dict)
 
     run_dict["results"] = parsed_results
@@ -392,6 +387,7 @@ async def get_results_by_test(
     limit: int = 50,
 ):
     """Get results grouped by test, sorted by best value first"""
+    limit = min(limit, MAX_LIMIT)  # Enforce max limit
     where_clauses = []
     params = []
     param_count = 1
@@ -438,13 +434,7 @@ async def get_results_by_test(
     result = []
     for row in rows:
         row_dict = dict(row)
-        # Parse dmi_info from JSONB
-        if row_dict.get("dmi_info"):
-            row_dict["dmi_info"] = (
-                json.loads(row_dict["dmi_info"])
-                if isinstance(row_dict["dmi_info"], str)
-                else row_dict["dmi_info"]
-            )
+        row_dict["dmi_info"] = parse_jsonb_field(row_dict.get("dmi_info"))
         result.append(row_dict)
     return result
 
@@ -577,19 +567,17 @@ async def get_stats_by_test(
     Get aggregated statistics for a test, grouped by CPU, system, or architecture.
     Returns median values for comparison.
     """
+    limit = min(limit, MAX_LIMIT)  # Enforce max limit
     # Validate group_by
     if group_by not in ("cpu", "system", "architecture"):
         group_by = "cpu"
 
     # Build query based on grouping
     if group_by == "cpu":
-        group_col = "cpu_model"
         select_extra = "cpu_model"
     elif group_by == "system":
-        group_col = "system_type"
         select_extra = "system_type"
     else:  # architecture
-        group_col = "architecture"
         select_extra = "architecture"
 
     where_clauses = ["test_name = $1"]

@@ -6,7 +6,7 @@ import TestResultsView from "./components/TestResultsView";
 import StatsView from "./components/StatsView";
 import AuthModal from "./components/AuthModal";
 import { useAuth } from "./context/AuthContext";
-import { Benchmark, TestInfo } from "./types";
+import { Benchmark, TestInfo, BenchmarkStat } from "./types";
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -26,6 +26,7 @@ function App() {
   const [showRunOptions, setShowRunOptions] = useState(false);
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const [tests, setTests] = useState<TestInfo[]>([]);
+  const [passmarkLeaderboard, setPassmarkLeaderboard] = useState<BenchmarkStat[]>([]);
   const [view, setView] = useState<View>("list");
   const [selectedBenchmark, setSelectedBenchmark] = useState<number | null>(
     null
@@ -44,6 +45,7 @@ function App() {
   useEffect(() => {
     fetchBenchmarks();
     fetchTests();
+    fetchPassmarkLeaderboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [architecture, hostname]);
 
@@ -53,7 +55,7 @@ function App() {
       setError(null);
 
       const params = new URLSearchParams();
-      params.append("limit", "20");
+      params.append("limit", "10");
       if (architecture) params.append("architecture", architecture);
       if (hostname) params.append("hostname", hostname);
 
@@ -76,6 +78,17 @@ function App() {
       setTests(response.data);
     } catch (err) {
       console.error("Failed to fetch tests:", err);
+    }
+  };
+
+  const fetchPassmarkLeaderboard = async () => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/stats/by-test?test_name=passmark_cpu&group_by=system&limit=10`
+      );
+      setPassmarkLeaderboard(response.data);
+    } catch (err) {
+      console.error("Failed to fetch passmark leaderboard:", err);
     }
   };
 
@@ -304,13 +317,6 @@ function App() {
                       >
                         {test.test_name}
                       </span>
-                      <span
-                        className="test-nav-stats"
-                        onClick={() => handleSelectTest(test.test_name)}
-                        title="View all individual results"
-                      >
-                        [full]
-                      </span>
                     </span>
                   ))}
                 </span>
@@ -351,7 +357,34 @@ function App() {
 
           {error && <div className="error">{error}</div>}
 
-          <h3 className="section-title">Recent Submissions (up to 20)</h3>
+          {/* PassMark CPU Leaderboard */}
+          {passmarkLeaderboard.length > 0 && (
+            <div className="leaderboard">
+              <h3 className="section-title">
+                PassMark CPU Top 10
+                <span
+                  className="section-link"
+                  onClick={() => handleSelectStats("passmark_cpu")}
+                >
+                  [view all]
+                </span>
+              </h3>
+              <div className="leaderboard-list">
+                {passmarkLeaderboard.map((stat, idx) => (
+                  <div key={idx} className="leaderboard-item">
+                    <span className="leaderboard-rank">#{idx + 1}</span>
+                    <span className="leaderboard-name">{stat.system_type || stat.cpu_model || "Unknown"}</span>
+                    <span className="leaderboard-value">
+                      {stat.median_value?.toLocaleString(undefined, { maximumFractionDigits: 0 })} {stat.unit}
+                    </span>
+                    <span className="leaderboard-meta">n={stat.sample_count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <h3 className="section-title">Recent Submissions</h3>
 
           {loading ? (
             <div className="loading">Loading...</div>
@@ -389,6 +422,7 @@ function App() {
         <StatsView
           testName={selectedTest}
           onBack={handleBack}
+          onViewFull={handleSelectTest}
         />
       )}
     </div>

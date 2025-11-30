@@ -10,9 +10,10 @@ type ViewMode = "table" | "chart";
 interface StatsViewProps {
   testName: string;
   onBack: () => void;
+  onViewFull?: (testName: string) => void;
 }
 
-function StatsView({ testName, onBack }: StatsViewProps) {
+function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
   const [stats, setStats] = useState<BenchmarkStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -228,6 +229,17 @@ function StatsView({ testName, onBack }: StatsViewProps) {
             })}
           </tbody>
         </table>
+      )}
+
+      {onViewFull && stats.length > 0 && (
+        <div className="stats-footer">
+          <span
+            className="stats-full-link"
+            onClick={() => onViewFull(testName)}
+          >
+            View all individual results →
+          </span>
+        </div>
       )}
     </div>
   );

@@ -64,12 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await axios.post(
         `${API_URL}/api/v1/login`,
-        null,
         {
-          params: {
-            username: credentials.username,
-            password: credentials.password,
-          },
+          username: credentials.username,
+          password: credentials.password,
         }
       );
 

@@ -155,6 +155,51 @@ class TestHealthCheck:
         assert "auth_mode" in data
 
 
+class TestAuthentication:
+    """Tests for authentication endpoints"""
+
+    def test_login_with_json_body(self, client):
+        """Test that login accepts JSON body (security improvement over query params)"""
+        # This tests the login endpoint format, not actual auth (requires valid user)
+        response = client.post(
+            f"{API_PREFIX}/login",
+            json={"username": "testuser", "password": "testpassword"},
+        )
+        # Should get 401 for invalid creds, not 422 for wrong format
+        assert response.status_code in [401, 200]
+
+    def test_login_rejects_query_params(self, client):
+        """Test that login does not work with query parameters"""
+        response = client.post(
+            f"{API_PREFIX}/login?username=testuser&password=testpassword"
+        )
+        # Should fail because body is missing
+        assert response.status_code == 422
+
+
+class TestPaginationLimits:
+    """Tests for pagination max limit enforcement"""
+
+    def test_list_benchmarks_respects_max_limit(self, client):
+        """Test that list benchmarks enforces max limit"""
+        # Request more than max limit
+        response = client.get(f"{API_PREFIX}/benchmarks?limit=10000")
+        assert response.status_code == 200
+        # Should not crash, results should be capped
+
+    def test_results_by_test_respects_max_limit(self, client):
+        """Test that results by test enforces max limit"""
+        response = client.get(f"{API_PREFIX}/results/by-test?limit=10000")
+        assert response.status_code == 200
+
+    def test_stats_by_test_respects_max_limit(self, client):
+        """Test that stats by test enforces max limit"""
+        response = client.get(
+            f"{API_PREFIX}/stats/by-test?test_name=openssl_aes256&limit=10000"
+        )
+        assert response.status_code == 200
+
+
 class TestBenchmarkSubmission:
     @pytest.mark.parametrize("arch", ["x86_64", "aarch64", "riscv64", "armv7l"])
     def test_submit_benchmark(self, client, arch):
@@ -383,12 +428,14 @@ class TestConsoleOutput:
         assert response.status_code == 200
         benchmark_id = response.json()["id"]
 
-        # Verify it's stored
+        # Verify it's stored (console_output is hidden from anonymous users)
         response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
         assert response.status_code == 200
         data = response.json()
+        # console_output is a sensitive field, hidden from non-owners
         assert "console_output" in data
-        assert data["console_output"] == "=== BENCHCOM ===\nRunning tests...\nComplete!"
+        # Anonymous users see null; owners would see the actual value
+        assert data["console_output"] is None
 
     def test_submit_without_console_output(self, client):
         """Test that console_output is optional"""

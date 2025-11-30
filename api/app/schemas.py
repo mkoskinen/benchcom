@@ -24,6 +24,11 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 # Benchmark schemas
 class BenchmarkResultCreate(BaseModel):
     test_name: str

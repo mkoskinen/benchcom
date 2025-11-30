@@ -195,6 +195,91 @@ class BenchmarkRunner:
 
         self.log("")
 
+    def run_zstd(self):
+        """Run zstd compression benchmark"""
+        if not self.check_command("zstd"):
+            self.log("zstd not found, skipping...")
+            return
+
+        # Get version
+        version = self.get_tool_version("zstd")
+        if version:
+            self.tool_versions["zstd"] = version
+
+        self.log("=== ZSTD COMPRESSION BENCHMARK ===")
+
+        # Create a test file with compressible data (pseudo-random but compressible)
+        test_file = self.output_dir / "zstd_test_data"
+        compressed_file = self.output_dir / "zstd_test_data.zst"
+
+        try:
+            # Generate 100MB of test data using /dev/urandom mixed with zeros
+            # This creates data that's compressible but not trivially so
+            import time
+
+            with open(test_file, "wb") as f:
+                # Write 100MB of data - mix of random and zeros for realistic compression
+                for _ in range(100):
+                    f.write(os.urandom(512 * 1024))  # 512KB random
+                    f.write(b'\x00' * 512 * 1024)    # 512KB zeros
+
+            # Compression benchmark
+            self.log("  Compressing 100MB test file...")
+            start = time.time()
+            output, ret = self.run_command(
+                ["zstd", "-f", "-3", str(test_file), "-o", str(compressed_file)],
+                timeout=120
+            )
+            compress_time = time.time() - start
+
+            if ret == 0 and compressed_file.exists():
+                file_size_mb = 100  # 100 MB test file
+                compress_speed = file_size_mb / compress_time
+                compressed_size = compressed_file.stat().st_size / (1024 * 1024)
+                ratio = file_size_mb / compressed_size
+
+                self.add_result(
+                    "zstd_compress", "compression", compress_speed, "MB/s",
+                    f"Compressed 100MB in {compress_time:.2f}s, ratio {ratio:.2f}x",
+                    metrics={"ratio": round(ratio, 2), "level": 3}
+                )
+                self.log(f"  Compression: {compress_speed:.1f} MB/s (ratio {ratio:.1f}x)")
+
+                # Decompression benchmark
+                self.log("  Decompressing...")
+                decompressed_file = self.output_dir / "zstd_test_decompressed"
+                start = time.time()
+                output, ret = self.run_command(
+                    ["zstd", "-d", "-f", str(compressed_file), "-o", str(decompressed_file)],
+                    timeout=120
+                )
+                decompress_time = time.time() - start
+
+                if ret == 0:
+                    decompress_speed = file_size_mb / decompress_time
+                    self.add_result(
+                        "zstd_decompress", "compression", decompress_speed, "MB/s",
+                        f"Decompressed 100MB in {decompress_time:.2f}s"
+                    )
+                    self.log(f"  Decompression: {decompress_speed:.1f} MB/s")
+
+                # Cleanup
+                if decompressed_file.exists():
+                    decompressed_file.unlink()
+            else:
+                self.log(f"  zstd compression failed (exit code {ret})")
+
+        except Exception as e:
+            self.log(f"  zstd benchmark error: {e}")
+        finally:
+            # Cleanup
+            if test_file.exists():
+                test_file.unlink()
+            if compressed_file.exists():
+                compressed_file.unlink()
+
+        self.log("")
+
     def run_openssl(self):
         """Run OpenSSL benchmarks"""
         if not self.check_command("openssl"):
@@ -240,6 +325,30 @@ class BenchmarkRunner:
             if match:
                 speed = float(match.group(1))
                 self.add_result("openssl_aes256", "cryptography", speed, "KB/s", output)
+
+        self.log("")
+
+    def run_openssl_full(self):
+        """Run additional OpenSSL benchmarks (full suite)"""
+        if not self.check_command("openssl"):
+            return
+
+        # SHA512
+        self.log("=== OPENSSL SPEED (SHA512, single-threaded) ===")
+        output, _ = self.run_command(["openssl", "speed", "-elapsed", "sha512"])
+        if output:
+            with open(self.output_dir / "openssl_sha512.txt", "w") as f:
+                f.write(output)
+            self.log("\n".join(output.split("\n")[-5:]))
+
+            # Extract 16KB throughput (last column)
+            match = re.search(
+                r"sha512\s+[\d.]+k\s+[\d.]+k\s+[\d.]+k\s+[\d.]+k\s+[\d.]+k\s+([\d.]+)k",
+                output,
+            )
+            if match:
+                speed = float(match.group(1))
+                self.add_result("openssl_sha512", "cryptography", speed, "KB/s", output)
 
         self.log("")
 
@@ -837,7 +946,7 @@ class BenchmarkRunner:
         try:
             response = requests.post(
                 f"{self.api_url}/api/v1/login",
-                params={"username": self.api_username, "password": self.api_password},
+                json={"username": self.api_username, "password": self.api_password},
                 timeout=30,
             )
 
@@ -845,7 +954,7 @@ class BenchmarkRunner:
                 data = response.json()
                 token = data.get("access_token")
                 if token:
-                    self.log(f"✓ Login successful")
+                    self.log("✓ Login successful")
                     return token
                 else:
                     self.log("✗ Login failed: no token in response")
@@ -951,9 +1060,11 @@ class BenchmarkRunner:
             # Full suite: everything
             self.run_passmark()
             self.run_openssl()
+            self.run_openssl_full()
             self.run_sysbench_cpu()
             self.run_sysbench_memory()
             self.run_7zip()
+            self.run_zstd()
             self.run_pi_calculation()
             self.run_disk_write()
             self.run_disk_read()

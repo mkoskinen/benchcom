@@ -1,4 +1,3 @@
-import os
 import secrets
 from pydantic_settings import BaseSettings
 from typing import Literal, List
