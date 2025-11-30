@@ -3,6 +3,7 @@ import BenchmarkList from "./components/BenchmarkList";
 import BenchmarkDetail from "./components/BenchmarkDetail";
 import BenchmarkCompare from "./components/BenchmarkCompare";
 import TestResultsView from "./components/TestResultsView";
+import StatsView from "./components/StatsView";
 import AuthModal from "./components/AuthModal";
 import { useAuth } from "./context/AuthContext";
 import { Benchmark, TestInfo } from "./types";
@@ -17,7 +18,7 @@ const LOGO = `██████╗ ███████╗███╗   █�
 ██████╔╝███████╗██║ ╚████║╚██████╗██║  ██║╚██████╗╚██████╔╝██║ ╚═╝ ██║
 ╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝`;
 
-type View = "list" | "detail" | "compare" | "test-results";
+type View = "list" | "detail" | "compare" | "test-results" | "stats";
 
 function App() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -86,6 +87,11 @@ function App() {
   const handleSelectTest = (testName: string) => {
     setSelectedTest(testName);
     setView("test-results");
+  };
+
+  const handleSelectStats = (testName: string) => {
+    setSelectedTest(testName);
+    setView("stats");
   };
 
   const handleToggleCompare = (id: number) => {
@@ -290,12 +296,21 @@ function App() {
                 <span key={category} className="test-nav-group">
                   <span className="test-nav-category">{category}:</span>
                   {testsByCategory[category].map((test) => (
-                    <span
-                      key={test.test_name}
-                      className="test-nav-link"
-                      onClick={() => handleSelectTest(test.test_name)}
-                    >
-                      {test.test_name} ({test.result_count})
+                    <span key={test.test_name} className="test-nav-item">
+                      <span
+                        className="test-nav-link"
+                        onClick={() => handleSelectTest(test.test_name)}
+                        title="View all results"
+                      >
+                        {test.test_name}
+                      </span>
+                      <span
+                        className="test-nav-stats"
+                        onClick={() => handleSelectStats(test.test_name)}
+                        title="View median stats by CPU/System"
+                      >
+                        [stats]
+                      </span>
                     </span>
                   ))}
                 </span>
@@ -367,6 +382,13 @@ function App() {
           testName={selectedTest}
           onBack={handleBack}
           onCompare={handleCompareFromTest}
+        />
+      )}
+
+      {view === "stats" && selectedTest && (
+        <StatsView
+          testName={selectedTest}
+          onBack={handleBack}
         />
       )}
     </div>

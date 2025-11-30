@@ -95,3 +95,34 @@ export interface RegisterCredentials {
   email: string;
   password: string;
 }
+
+// Stats types
+export interface BenchmarkStat {
+  cpu_model: string | null;
+  architecture: string;
+  system_type: string | null;
+  test_name: string;
+  test_category: string | null;
+  unit: string | null;
+  median_value: number | null;
+  mean_value: number | null;
+  min_value: number | null;
+  max_value: number | null;
+  stddev_value: number | null;
+  sample_count: number;
+  last_updated: string;
+}
+
+export interface AvailableCpu {
+  cpu_model: string;
+  architecture: string;
+  total_samples: number;
+  test_count: number;
+}
+
+export interface AvailableSystem {
+  system_type: string;
+  architecture: string;
+  total_samples: number;
+  test_count: number;
+}

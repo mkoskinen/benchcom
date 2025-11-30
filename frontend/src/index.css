@@ -352,16 +352,31 @@ button:hover {
   font-size: 11px;
 }
 
+.test-nav-item {
+  margin-left: 8px;
+}
+
 .test-nav-link {
   cursor: pointer;
   text-decoration: underline;
-  margin-left: 8px;
 }
 
 .test-nav-link:hover {
   background: #000;
   color: #fff;
   text-decoration: none;
+}
+
+.test-nav-stats {
+  cursor: pointer;
+  font-size: 10px;
+  color: #666;
+  margin-left: 2px;
+}
+
+.test-nav-stats:hover {
+  color: #000;
+  text-decoration: underline;
 }
 
 /* Section titles */
@@ -885,4 +900,47 @@ button:hover {
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Stats controls */
+.stats-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.group-by-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.group-by-toggle button {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+}
+
+.group-by-toggle button.active {
+  background: #000;
+  color: #fff;
+}
+
+.group-by-toggle button:hover {
+  background: #e0e0e0;
+}
+
+.group-by-toggle button.active:hover {
+  background: #333;
+  color: #fff;
 }

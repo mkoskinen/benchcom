@@ -96,3 +96,36 @@ FROM benchmark_runs br
 LEFT JOIN users u ON br.user_id = u.id
 LEFT JOIN benchmark_results bres ON br.id = bres.run_id
 GROUP BY br.id, u.username;
+
+-- Aggregated benchmark statistics table
+-- Pre-computed median/mean/etc per CPU, architecture, system type, and test
+CREATE TABLE IF NOT EXISTS benchmark_stats (
+    id SERIAL PRIMARY KEY,
+
+    -- Grouping keys
+    cpu_model VARCHAR(255),
+    architecture VARCHAR(50) NOT NULL,
+    system_type VARCHAR(255),  -- from dmi_info (manufacturer + product)
+    test_name VARCHAR(255) NOT NULL,
+    test_category VARCHAR(100),
+    unit VARCHAR(50),
+
+    -- Statistics
+    median_value DOUBLE PRECISION,
+    mean_value DOUBLE PRECISION,
+    min_value DOUBLE PRECISION,
+    max_value DOUBLE PRECISION,
+    stddev_value DOUBLE PRECISION,
+    sample_count INTEGER NOT NULL DEFAULT 0,
+
+    -- Metadata
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT benchmark_stats_unique UNIQUE(cpu_model, architecture, system_type, test_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_benchmark_stats_test_name ON benchmark_stats(test_name);
+CREATE INDEX IF NOT EXISTS idx_benchmark_stats_cpu_model ON benchmark_stats(cpu_model);
+CREATE INDEX IF NOT EXISTS idx_benchmark_stats_architecture ON benchmark_stats(architecture);
+CREATE INDEX IF NOT EXISTS idx_benchmark_stats_system_type ON benchmark_stats(system_type);
+CREATE INDEX IF NOT EXISTS idx_benchmark_stats_test_category ON benchmark_stats(test_category);
