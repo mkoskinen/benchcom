@@ -107,6 +107,25 @@ class BenchmarkRunner:
         )
         return result.returncode == 0
 
+    def get_openssl_cmd(self) -> Optional[str]:
+        """Get the OpenSSL command path, preferring real OpenSSL over LibreSSL on macOS"""
+        if platform.system() == "Darwin":
+            # On macOS, prefer Homebrew OpenSSL over system LibreSSL
+            # Check common Homebrew paths
+            brew_paths = [
+                "/opt/homebrew/opt/openssl@3/bin/openssl",  # Apple Silicon
+                "/opt/homebrew/opt/openssl/bin/openssl",
+                "/usr/local/opt/openssl@3/bin/openssl",     # Intel Mac
+                "/usr/local/opt/openssl/bin/openssl",
+            ]
+            for path in brew_paths:
+                if os.path.exists(path):
+                    return path
+        # Fall back to system openssl
+        if self.check_command("openssl"):
+            return "openssl"
+        return None
+
     def get_tool_version(self, cmd: str, version_arg: str = "--version") -> Optional[str]:
         """Get version string for a tool"""
         try:
@@ -282,18 +301,19 @@ class BenchmarkRunner:
 
     def run_openssl(self):
         """Run OpenSSL benchmarks"""
-        if not self.check_command("openssl"):
+        openssl_cmd = self.get_openssl_cmd()
+        if not openssl_cmd:
             self.log("openssl not found, skipping...")
             return
 
         # Get version
-        version = self.get_tool_version("openssl", "version")
+        version = self.get_tool_version(openssl_cmd, "version")
         if version:
             self.tool_versions["openssl"] = version
 
         # SHA256
         self.log("=== OPENSSL SPEED (SHA256, single-threaded) ===")
-        output, _ = self.run_command(["openssl", "speed", "-elapsed", "sha256"])
+        output, _ = self.run_command([openssl_cmd, "speed", "-elapsed", "sha256"])
         if output:
             with open(self.output_dir / "openssl_sha256.txt", "w") as f:
                 f.write(output)
@@ -312,7 +332,7 @@ class BenchmarkRunner:
 
         # AES-256-CBC
         self.log("=== OPENSSL SPEED (AES-256-CBC, single-threaded) ===")
-        output, _ = self.run_command(["openssl", "speed", "-elapsed", "aes-256-cbc"])
+        output, _ = self.run_command([openssl_cmd, "speed", "-elapsed", "aes-256-cbc"])
         if output:
             with open(self.output_dir / "openssl_aes256.txt", "w") as f:
                 f.write(output)
@@ -330,12 +350,13 @@ class BenchmarkRunner:
 
     def run_openssl_full(self):
         """Run additional OpenSSL benchmarks (full suite)"""
-        if not self.check_command("openssl"):
+        openssl_cmd = self.get_openssl_cmd()
+        if not openssl_cmd:
             return
 
         # SHA512
         self.log("=== OPENSSL SPEED (SHA512, single-threaded) ===")
-        output, _ = self.run_command(["openssl", "speed", "-elapsed", "sha512"])
+        output, _ = self.run_command([openssl_cmd, "speed", "-elapsed", "sha512"])
         if output:
             with open(self.output_dir / "openssl_sha512.txt", "w") as f:
                 f.write(output)

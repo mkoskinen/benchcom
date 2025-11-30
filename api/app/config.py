@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Authentication modes: "anonymous", "authenticated", "both"
     AUTH_MODE: Literal["anonymous", "authenticated", "both"] = "both"
 
+    # Whether anonymous users have admin privileges (for development/private instances)
+    ANONYMOUS_ADMIN: bool = False
+
     # JWT settings - generate random key if not set
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"

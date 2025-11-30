@@ -84,7 +84,11 @@ async def shutdown():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "auth_mode": settings.AUTH_MODE}
+    return {
+        "status": "healthy",
+        "auth_mode": settings.AUTH_MODE,
+        "anonymous_admin": settings.ANONYMOUS_ADMIN,
+    }
 
 
 # Authentication endpoints
@@ -352,11 +356,15 @@ async def get_benchmark(
 
     # Determine if user can see sensitive data
     # Admin can see everything, user can see their own submissions
-    can_see_sensitive = False
-    if current_user:
+    # Anonymous users are admin if ANONYMOUS_ADMIN is set
+    if settings.ANONYMOUS_ADMIN:
+        can_see_sensitive = True
+    elif current_user:
         is_admin = current_user.get("is_admin", False)
         is_owner = run_dict.get("user_id") == current_user.get("id")
         can_see_sensitive = is_admin or is_owner
+    else:
+        can_see_sensitive = False
 
     # Remove sensitive fields if user doesn't have permission
     if not can_see_sensitive:

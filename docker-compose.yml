@@ -69,6 +69,7 @@ services:
       POSTGRES_PORT: 5432
       AUTH_MODE: both
       SECRET_KEY: change-this-in-production
+      ANONYMOUS_ADMIN: "true"
     ports:
       - "8000:8000"
     depends_on:

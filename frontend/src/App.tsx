@@ -26,8 +26,18 @@ function App() {
   const [showRunOptions, setShowRunOptions] = useState(false);
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const [tests, setTests] = useState<TestInfo[]>([]);
-  const [passmarkLeaderboard, setPassmarkLeaderboard] = useState<BenchmarkStat[]>([]);
+  const [leaderboard, setLeaderboard] = useState<BenchmarkStat[]>([]);
+  const [leaderboardTab, setLeaderboardTab] = useState(0);
   const [view, setView] = useState<View>("list");
+
+  // Leaderboard tab configurations
+  const leaderboardTabs = [
+    { label: "CPU MT (system)", test: "passmark_cpu_mt", groupBy: "system" },
+    { label: "CPU MT (CPU)", test: "passmark_cpu_mt", groupBy: "cpu" },
+    { label: "CPU ST (system)", test: "passmark_cpu_single", groupBy: "system" },
+    { label: "Memory (system)", test: "passmark_memory", groupBy: "system" },
+    { label: "AES256 (CPU)", test: "openssl_aes256", groupBy: "cpu" },
+  ];
   const [selectedBenchmark, setSelectedBenchmark] = useState<number | null>(
     null
   );
@@ -35,8 +45,6 @@ function App() {
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [architecture, setArchitecture] = useState("");
-  const [hostname, setHostname] = useState("");
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -45,24 +53,18 @@ function App() {
   useEffect(() => {
     fetchBenchmarks();
     fetchTests();
-    fetchPassmarkLeaderboard();
+  }, []);
+
+  useEffect(() => {
+    fetchLeaderboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [architecture, hostname]);
+  }, [leaderboardTab]);
 
   const fetchBenchmarks = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const params = new URLSearchParams();
-      params.append("limit", "10");
-      if (architecture) params.append("architecture", architecture);
-      if (hostname) params.append("hostname", hostname);
-
-      const response = await axios.get(
-        `${API_URL}/api/v1/benchmarks?${params.toString()}`
-      );
-
+      const response = await axios.get(`${API_URL}/api/v1/benchmarks?limit=10`);
       setBenchmarks(response.data);
     } catch (err) {
       setError("Failed to fetch benchmarks");
@@ -81,14 +83,15 @@ function App() {
     }
   };
 
-  const fetchPassmarkLeaderboard = async () => {
+  const fetchLeaderboard = async () => {
     try {
+      const tab = leaderboardTabs[leaderboardTab];
       const response = await axios.get(
-        `${API_URL}/api/v1/stats/by-test?test_name=passmark_cpu_mt&group_by=system&limit=10`
+        `${API_URL}/api/v1/stats/by-test?test_name=${tab.test}&group_by=${tab.groupBy}&limit=10`
       );
-      setPassmarkLeaderboard(response.data);
+      setLeaderboard(response.data);
     } catch (err) {
-      console.error("Failed to fetch passmark leaderboard:", err);
+      console.error("Failed to fetch leaderboard:", err);
     }
   };
 
@@ -324,24 +327,6 @@ function App() {
             </div>
           )}
 
-          <div className="filters">
-            <label>Host:</label>
-            <input
-              type="text"
-              placeholder="hostname"
-              value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
-            />
-            <label>Arch:</label>
-            <input
-              type="text"
-              placeholder="x86_64"
-              value={architecture}
-              onChange={(e) => setArchitecture(e.target.value)}
-            />
-            <button onClick={fetchBenchmarks}>Refresh</button>
-          </div>
-
           {selectedForCompare.length > 0 && (
             <div className="compare-bar">
               <span>{selectedForCompare.length} selected for comparison</span>
@@ -357,23 +342,38 @@ function App() {
 
           {error && <div className="error">{error}</div>}
 
-          {/* PassMark CPU Leaderboard */}
-          {passmarkLeaderboard.length > 0 && (
-            <div className="leaderboard">
-              <h3 className="section-title">
-                PassMark CPU Top 10
-                <span
-                  className="section-link"
-                  onClick={() => handleSelectStats("passmark_cpu_mt")}
-                >
-                  [view all]
-                </span>
-              </h3>
+          {/* Leaderboard with tabs */}
+          <div className="leaderboard">
+            <div className="leaderboard-header">
+              <h3 className="section-title">Top 10</h3>
+              <div className="leaderboard-tabs">
+                {leaderboardTabs.map((tab, idx) => (
+                  <span
+                    key={idx}
+                    className={`leaderboard-tab ${leaderboardTab === idx ? "active" : ""}`}
+                    onClick={() => setLeaderboardTab(idx)}
+                  >
+                    {tab.label}
+                  </span>
+                ))}
+              </div>
+              <span
+                className="section-link"
+                onClick={() => handleSelectStats(leaderboardTabs[leaderboardTab].test)}
+              >
+                [view all]
+              </span>
+            </div>
+            {leaderboard.length > 0 ? (
               <div className="leaderboard-list">
-                {passmarkLeaderboard.map((stat, idx) => (
+                {leaderboard.map((stat, idx) => (
                   <div key={idx} className="leaderboard-item">
                     <span className="leaderboard-rank">#{idx + 1}</span>
-                    <span className="leaderboard-name">{stat.system_type || stat.cpu_model || "Unknown"}</span>
+                    <span className="leaderboard-name">
+                      {leaderboardTabs[leaderboardTab].groupBy === "cpu"
+                        ? (stat.cpu_model || "Unknown")
+                        : (stat.system_type || stat.cpu_model || "Unknown")}
+                    </span>
                     <span className="leaderboard-value">
                       {stat.median_value?.toLocaleString(undefined, { maximumFractionDigits: 0 })} {stat.unit}
                     </span>
@@ -381,8 +381,10 @@ function App() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="leaderboard-empty">No data available</div>
+            )}
+          </div>
 
           <h3 className="section-title">Recent Submissions</h3>
 
