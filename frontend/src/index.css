@@ -1,0 +1,369 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  background: #fff;
+  color: #000;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 20px;
+}
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Header with ASCII logo */
+.header {
+  margin-bottom: 24px;
+  border-bottom: 1px solid #000;
+  padding-bottom: 16px;
+}
+
+.logo {
+  font-family: monospace;
+  font-size: 10px;
+  line-height: 1.15;
+  white-space: pre;
+  margin-bottom: 8px;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filters label {
+  font-size: 13px;
+}
+
+.filters input {
+  padding: 4px 8px;
+  border: 1px solid #000;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.filters input:focus {
+  outline: 2px solid #000;
+  outline-offset: 1px;
+}
+
+button {
+  padding: 4px 12px;
+  background: #000;
+  color: #fff;
+  border: 1px solid #000;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #fff;
+  color: #000;
+}
+
+/* Compare bar */
+.compare-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border: 1px solid #000;
+  margin-bottom: 16px;
+}
+
+.compare-bar span {
+  font-weight: 600;
+}
+
+/* Table */
+.benchmark-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.benchmark-table th,
+.benchmark-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #000;
+  font-size: 13px;
+}
+
+.benchmark-table th {
+  font-weight: 600;
+  border-bottom: 2px solid #000;
+}
+
+.benchmark-table .checkbox-col {
+  width: 60px;
+  text-align: center;
+}
+
+.benchmark-table tbody tr.selected {
+  background: #e0e0e0;
+}
+
+.benchmark-table tbody tr .clickable {
+  cursor: pointer;
+}
+
+.benchmark-table tbody tr:hover .clickable {
+  background: #000;
+  color: #fff;
+}
+
+/* Info table (system details) */
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  border: 1px solid #000;
+}
+
+.info-table th,
+.info-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border: 1px solid #000;
+  font-size: 13px;
+}
+
+.info-table th {
+  background: #f0f0f0;
+  font-weight: 600;
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* Results by category */
+.results-category {
+  margin-bottom: 24px;
+}
+
+.results-category h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #000;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #000;
+}
+
+.results-table th,
+.results-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #000;
+  font-size: 13px;
+}
+
+.results-table th {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+
+.results-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.results-table .value-col {
+  font-family: monospace;
+  font-weight: 600;
+  text-align: right;
+  width: 150px;
+}
+
+.results-table .unit-col {
+  color: #666;
+  width: 100px;
+}
+
+/* Compare view */
+.compare-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  border: 1px solid #000;
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border: 1px solid #000;
+  font-size: 13px;
+}
+
+.compare-table th {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+
+.compare-table .value-col {
+  font-family: monospace;
+  text-align: right;
+}
+
+.compare-table .value-col.best {
+  background: #000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.compare-table .unit-col {
+  color: #666;
+  width: 80px;
+}
+
+/* States */
+.loading,
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+.error {
+  padding: 12px;
+  border: 1px solid #000;
+  margin-bottom: 16px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.back-link:hover {
+  text-decoration: none;
+}
+
+/* Test navigation */
+.test-nav {
+  padding: 12px;
+  background: #f0f0f0;
+  border: 1px solid #000;
+  margin-bottom: 16px;
+  line-height: 2;
+}
+
+.test-nav-label {
+  font-weight: 600;
+  margin-right: 12px;
+}
+
+.test-nav-group {
+  display: inline;
+}
+
+.test-nav-category {
+  font-weight: 600;
+  margin-left: 8px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.test-nav-link {
+  cursor: pointer;
+  text-decoration: underline;
+  margin-left: 8px;
+}
+
+.test-nav-link:hover {
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #666;
+}
+
+/* Test results view */
+.test-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.test-subtitle {
+  font-weight: 400;
+  color: #666;
+  font-size: 13px;
+}
+
+.results-table .rank-col {
+  width: 40px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.results-table .pct-col {
+  width: 80px;
+  text-align: right;
+  font-family: monospace;
+}
+
+.results-table .pct-col.slower {
+  color: #666;
+}
+
+.results-table .best-row td {
+  background: #f8f8f8;
+}
+
+.results-table .best-row .value-col {
+  background: #000;
+  color: #fff;
+}
+
+.results-table .checkbox-col {
+  width: 60px;
+  text-align: center;
+}
+
+.results-table tbody tr.selected {
+  background: #e0e0e0;
+}
+
+/* Percentage diff in compare view */
+.pct-diff {
+  font-size: 11px;
+  color: #666;
+  font-weight: 400;
+}
+
+.compare-table .value-col.best .pct-diff {
+  color: #ccc;
+}

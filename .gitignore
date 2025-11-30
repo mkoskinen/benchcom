@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Benchmark results
+benchcom_*/
+benchcom_*.tar.gz
+*_benchmarks_*/
+*_benchmarks_*.tar.gz
+
+# Node
+node_modules/
+
+# Frontend build
+frontend/dist/
