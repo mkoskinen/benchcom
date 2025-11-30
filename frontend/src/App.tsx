@@ -84,7 +84,7 @@ function App() {
   const fetchPassmarkLeaderboard = async () => {
     try {
       const response = await axios.get(
-        `${API_URL}/api/v1/stats/by-test?test_name=passmark_cpu&group_by=system&limit=10`
+        `${API_URL}/api/v1/stats/by-test?test_name=passmark_cpu_mt&group_by=system&limit=10`
       );
       setPassmarkLeaderboard(response.data);
     } catch (err) {
@@ -364,7 +364,7 @@ function App() {
                 PassMark CPU Top 10
                 <span
                   className="section-link"
-                  onClick={() => handleSelectStats("passmark_cpu")}
+                  onClick={() => handleSelectStats("passmark_cpu_mt")}
                 >
                   [view all]
                 </span>

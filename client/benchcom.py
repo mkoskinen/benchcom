@@ -533,7 +533,7 @@ class BenchmarkRunner:
             # CPU Mark (overall CPU score)
             cpu_mark = extract_value("SUMM_CPU")
             if cpu_mark and cpu_mark > 0:
-                self.add_result("passmark_cpu", "cpu", cpu_mark, "points", results_yaml)
+                self.add_result("passmark_cpu_mt", "cpu", cpu_mark, "points", results_yaml)
                 self.log(f"  CPU Mark: {cpu_mark:.0f}")
 
             # Memory Mark

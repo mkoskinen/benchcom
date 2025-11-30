@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { TestResult } from "../types";
+import { getTestDescription } from "../testDescriptions";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -270,6 +271,10 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
           — {isLowerBetter ? "lower is better" : "higher is better"}
         </span>
       </h2>
+
+      {getTestDescription(testName) && (
+        <p className="test-description">{getTestDescription(testName)}</p>
+      )}
 
       <div className="view-toggle">
         <button

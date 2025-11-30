@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { BenchmarkStat } from "../types";
+import { getTestDescription } from "../testDescriptions";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -47,6 +48,7 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
   };
 
   const unit = stats.length > 0 ? stats[0].unit : null;
+  const description = getTestDescription(testName);
   const isLowerBetter = useMemo(() => {
     return unit?.toLowerCase()?.includes("second") ?? false;
   }, [unit]);
@@ -120,6 +122,10 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
           {" "}— Median by {groupBy} ({isLowerBetter ? "lower is better" : "higher is better"})
         </span>
       </h2>
+
+      {description && (
+        <p className="test-description">{description}</p>
+      )}
 
       <div className="stats-controls">
         <div className="group-by-toggle">
