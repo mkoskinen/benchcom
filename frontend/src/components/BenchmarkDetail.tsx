@@ -3,7 +3,8 @@ import axios from "axios";
 import { BenchmarkDetail as BenchmarkDetailType } from "../types";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.hostname}:8000`;
 
 interface BenchmarkDetailProps {
   benchmarkId: number;

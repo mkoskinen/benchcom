@@ -961,22 +961,33 @@ class BenchmarkRunner:
             return dmi if dmi else None
 
         # Linux: Try dmidecode first (most complete, but needs root)
+        def clean_sudo_output(output: str) -> str:
+            """Remove sudo warnings from output"""
+            lines = output.strip().split('\n')
+            # Filter out sudo warning lines
+            clean_lines = [l for l in lines if not l.startswith('sudo:')]
+            return '\n'.join(clean_lines).strip()
+
         if self.check_command("dmidecode"):
             output, ret = self.run_command(["sudo", "dmidecode", "-s", "system-manufacturer"])
-            if ret == 0 and output.strip() and "Permission denied" not in output:
-                dmi["manufacturer"] = output.strip()
+            output = clean_sudo_output(output)
+            if ret == 0 and output and "Permission denied" not in output:
+                dmi["manufacturer"] = output
 
                 output, _ = self.run_command(["sudo", "dmidecode", "-s", "system-product-name"])
-                if output.strip():
-                    dmi["product"] = output.strip()
+                output = clean_sudo_output(output)
+                if output:
+                    dmi["product"] = output
 
                 output, _ = self.run_command(["sudo", "dmidecode", "-s", "system-version"])
-                if output.strip():
-                    dmi["version"] = output.strip()
+                output = clean_sudo_output(output)
+                if output:
+                    dmi["version"] = output
 
                 output, _ = self.run_command(["sudo", "dmidecode", "-s", "baseboard-product-name"])
-                if output.strip():
-                    dmi["board"] = output.strip()
+                output = clean_sudo_output(output)
+                if output:
+                    dmi["board"] = output
 
         # Fallback: try reading from /sys/class/dmi/id/ (no root needed)
         if not dmi:

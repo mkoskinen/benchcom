@@ -9,7 +9,9 @@ import { useAuth } from "./context/AuthContext";
 import { Benchmark, TestInfo, BenchmarkStat } from "./types";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// Derive API URL from current location (frontend:3000 -> api:8000)
+const API_URL = import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.hostname}:8000`;
 
 const LOGO = `██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
 ██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║

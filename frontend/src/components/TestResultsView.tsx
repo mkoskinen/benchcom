@@ -3,7 +3,8 @@ import axios from "axios";
 import { TestResult } from "../types";
 import { getTestDescription } from "../testDescriptions";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.hostname}:8000`;
 
 type SortField = "cpu_model" | "hostname" | "architecture" | "value" | "submitted_at";
 type SortDirection = "asc" | "desc";

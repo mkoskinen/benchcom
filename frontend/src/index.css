@@ -1092,10 +1092,16 @@ button:hover {
     font-size: 12px;
   }
 
+  .app {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .logo {
     font-size: 6px;
     line-height: 1.1;
     overflow-x: auto;
+    max-width: 100%;
   }
 
   .header {
@@ -1132,14 +1138,35 @@ button:hover {
     font-size: 8px;
   }
 
+  .run-section {
+    display: none;
+  }
+
   .test-nav {
-    font-size: 11px;
-    line-height: 1.8;
+    font-size: 10px;
+    line-height: 1.6;
+    padding: 8px;
   }
 
   .test-nav-label {
     display: block;
     margin-bottom: 4px;
+  }
+
+  .test-nav-group {
+    display: inline;
+  }
+
+  .test-nav-category {
+    font-size: 10px;
+  }
+
+  .test-nav-item {
+    margin-left: 4px;
+  }
+
+  .leaderboard {
+    overflow-x: auto;
   }
 
   .leaderboard-header {
@@ -1154,55 +1181,116 @@ button:hover {
 
   .leaderboard-item {
     font-size: 11px;
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .leaderboard-rank {
+    width: 24px;
   }
 
   .leaderboard-name {
-    max-width: 120px;
+    max-width: 140px;
+    min-width: 0;
+    flex: 1;
   }
 
   .leaderboard-value {
-    min-width: 80px;
-    font-size: 11px;
+    min-width: 70px;
+    font-size: 10px;
+  }
+
+  .leaderboard-meta {
+    font-size: 9px;
+    min-width: 30px;
+  }
+
+  .benchmark-table {
+    display: block;
+    overflow-x: auto;
   }
 
   .benchmark-table th,
   .benchmark-table td {
     padding: 6px 4px;
-    font-size: 11px;
+    font-size: 10px;
+    white-space: nowrap;
   }
 
   .benchmark-table .checkbox-col {
-    width: 40px;
+    width: 30px;
+  }
+
+  .info-table {
+    display: block;
+    overflow-x: auto;
   }
 
   .info-table th,
   .info-table td {
     padding: 4px 6px;
-    font-size: 11px;
+    font-size: 10px;
+  }
+
+  .results-table {
+    display: block;
+    overflow-x: auto;
   }
 
   .results-table th,
   .results-table td {
-    padding: 6px 8px;
-    font-size: 11px;
+    padding: 4px 6px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .bar-chart {
+    padding: 8px;
+  }
+
+  .bar-row {
+    gap: 6px;
+    padding: 4px 0;
   }
 
   .bar-label {
-    width: 120px;
-    min-width: 120px;
+    width: 100px;
+    min-width: 100px;
   }
 
   .bar-hostname {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .bar-cpu {
+    font-size: 9px;
+  }
+
+  .bar-value {
     font-size: 10px;
   }
 
   .compare-bar {
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .section-title {
+    font-size: 12px;
+  }
+
+  .stats-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .view-toggle button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .group-by-toggle button {
+    padding: 3px 6px;
+    font-size: 10px;
   }
 }
