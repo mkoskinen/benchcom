@@ -44,7 +44,7 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
 
   const formatValue = (value: number | null) => {
     if (value === null) return "—";
-    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const unit = stats.length > 0 ? stats[0].unit : null;
