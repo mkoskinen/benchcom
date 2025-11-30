@@ -237,6 +237,7 @@ async def list_benchmarks(
             br.submitted_at,
             br.is_anonymous,
             br.benchmark_version,
+            br.dmi_info,
             u.username,
             COUNT(bres.id) as result_count
         FROM benchmark_runs br
@@ -250,7 +251,18 @@ async def list_benchmarks(
     params.extend([limit, offset])
 
     rows = await db.fetch(query, *params)
-    return [dict(row) for row in rows]
+    result = []
+    for row in rows:
+        row_dict = dict(row)
+        # Parse dmi_info from JSONB
+        if row_dict.get("dmi_info"):
+            row_dict["dmi_info"] = (
+                json.loads(row_dict["dmi_info"])
+                if isinstance(row_dict["dmi_info"], str)
+                else row_dict["dmi_info"]
+            )
+        result.append(row_dict)
+    return result
 
 
 @app.get(

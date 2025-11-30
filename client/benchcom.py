@@ -303,17 +303,25 @@ class BenchmarkRunner:
         self.log("")
 
     def run_passmark(self):
-        """Run PassMark PerformanceTest Linux"""
-        pt_paths = [
-            "/opt/passmark/pt_linux/pt_linux",
-            "/opt/passmark/PerformanceTest/PerformanceTest_Linux_x86-64",
-            "/opt/passmark/PerformanceTest/PerformanceTest_Linux_ARM64",
-            "/opt/passmark/PerformanceTest/pt_linux_x64",
-            "/opt/passmark/pt_linux_x64",
-            "/opt/passmark/pt_linux_arm64",
-            "/usr/local/bin/pt_linux",
-            "pt_linux",
-        ]
+        """Run PassMark PerformanceTest"""
+        # Platform-specific paths
+        if platform.system() == "Darwin":
+            pt_paths = [
+                "/Applications/PerformanceTest.app/Contents/MacOS/PerformanceTest",
+                str(Path.home() / "Applications/PerformanceTest.app/Contents/MacOS/PerformanceTest"),
+                "/usr/local/bin/pt_mac",
+            ]
+        else:
+            pt_paths = [
+                "/opt/passmark/pt_linux/pt_linux",
+                "/opt/passmark/PerformanceTest/PerformanceTest_Linux_x86-64",
+                "/opt/passmark/PerformanceTest/PerformanceTest_Linux_ARM64",
+                "/opt/passmark/PerformanceTest/pt_linux_x64",
+                "/opt/passmark/pt_linux_x64",
+                "/opt/passmark/pt_linux_arm64",
+                "/usr/local/bin/pt_linux",
+                "pt_linux",
+            ]
 
         pt_cmd = None
         for path in pt_paths:
@@ -325,7 +333,7 @@ class BenchmarkRunner:
                 break
 
         if not pt_cmd:
-            self.log("PassMark pt_linux not found, skipping...")
+            self.log("PassMark not found, skipping...")
             return
 
         self.log("=== PASSMARK PERFORMANCETEST ===")
@@ -458,8 +466,18 @@ class BenchmarkRunner:
         self.log(f"Test file: {test_file}")
 
         try:
-            output, ret = self.run_command(
-                [
+            # macOS uses different dd syntax (no conv=fdatasync)
+            if platform.system() == "Darwin":
+                # Write file then sync
+                dd_cmd = [
+                    "dd",
+                    "if=/dev/zero",
+                    f"of={test_file}",
+                    "bs=1m",  # macOS uses lowercase
+                    "count=1024",
+                ]
+            else:
+                dd_cmd = [
                     "dd",
                     "if=/dev/zero",
                     f"of={test_file}",
@@ -467,7 +485,8 @@ class BenchmarkRunner:
                     "count=1024",
                     "conv=fdatasync",
                 ]
-            )
+
+            output, ret = self.run_command(dd_cmd)
 
             if ret != 0 or "No space left" in output:
                 self.log("Skipping: not enough disk space")
@@ -508,31 +527,49 @@ class BenchmarkRunner:
 
     def run_disk_read(self):
         """Run disk read benchmark"""
-        # Try to find a readable disk device
-        devices = ["/dev/mmcblk0", "/dev/sda", "/dev/nvme0n1", "/dev/vda"]
-        disk_dev = None
+        # Try to find a readable disk device (platform-specific)
+        if platform.system() == "Darwin":
+            devices = ["/dev/disk0", "/dev/disk1", "/dev/rdisk0", "/dev/rdisk1"]
+        else:
+            devices = ["/dev/mmcblk0", "/dev/sda", "/dev/nvme0n1", "/dev/vda"]
 
+        disk_dev = None
         for dev in devices:
             if Path(dev).exists() and os.access(dev, os.R_OK):
                 disk_dev = dev
                 break
 
         if not disk_dev:
-            self.log("No readable disk found for read test")
+            self.log("=== DISK READ TEST ===")
+            self.log("Skipping: no readable disk device found (may need root)")
+            self.log("")
             return
 
         self.log(f"=== DISK READ TEST (1GB from {disk_dev}) ===")
 
-        # Try to drop caches (may need root)
+        # Try to drop caches (Linux only, may need root)
         subprocess.run(["sync"], capture_output=True)
-        try:
-            with open("/proc/sys/vm/drop_caches", "w") as f:
-                f.write("3")
-        except (IOError, PermissionError):
+        if platform.system() != "Darwin":
+            try:
+                with open("/proc/sys/vm/drop_caches", "w") as f:
+                    f.write("3")
+            except (IOError, PermissionError):
+                pass
+        else:
+            # macOS: purge command needs root, skip silently
             pass
 
-        output, _ = self.run_command(
-            [
+        # Platform-specific dd command
+        if platform.system() == "Darwin":
+            dd_cmd = [
+                "dd",
+                f"if={disk_dev}",
+                "of=/dev/null",
+                "bs=1m",  # macOS uses lowercase
+                "count=1024",
+            ]
+        else:
+            dd_cmd = [
                 "dd",
                 f"if={disk_dev}",
                 "of=/dev/null",
@@ -540,7 +577,8 @@ class BenchmarkRunner:
                 "count=1024",
                 "iflag=direct",
             ]
-        )
+
+        output, _ = self.run_command(dd_cmd)
 
         if output:
             with open(self.output_dir / "disk_read.txt", "w") as f:
@@ -569,27 +607,58 @@ class BenchmarkRunner:
             "benchmark_version": BENCHCOM_VERSION,
         }
 
-        # Get CPU model
-        try:
-            with open("/proc/cpuinfo", "r") as f:
-                for line in f:
-                    if line.startswith("model name"):
-                        info["cpu_model"] = line.split(":", 1)[1].strip()
-                        break
-                    elif line.startswith("Hardware"):
-                        info["cpu_model"] = line.split(":", 1)[1].strip()
-                        break
-        except (IOError, OSError):
-            info["cpu_model"] = "unknown"
+        # Get CPU model and memory (platform-specific)
+        if platform.system() == "Darwin":
+            # macOS: use sysctl and system_profiler
+            try:
+                output, ret = self.run_command(["sysctl", "-n", "machdep.cpu.brand_string"])
+                if ret == 0 and output.strip():
+                    info["cpu_model"] = output.strip()
+                else:
+                    # Apple Silicon doesn't have brand_string, use system_profiler
+                    output, ret = self.run_command(
+                        ["system_profiler", "SPHardwareDataType"], timeout=30
+                    )
+                    if ret == 0:
+                        for line in output.split("\n"):
+                            if "Chip:" in line:
+                                info["cpu_model"] = line.split(":", 1)[1].strip()
+                                break
+                            elif "Processor Name:" in line:
+                                info["cpu_model"] = line.split(":", 1)[1].strip()
+                                break
+            except (IOError, OSError):
+                info["cpu_model"] = "unknown"
 
-        # Get memory
-        try:
-            output, _ = self.run_command(["free", "-m"])
-            match = re.search(r"Mem:\s+(\d+)", output)
-            if match:
-                info["total_memory_mb"] = int(match.group(1))
-        except (ValueError, AttributeError):
-            info["total_memory_mb"] = 0
+            # macOS memory
+            try:
+                output, ret = self.run_command(["sysctl", "-n", "hw.memsize"])
+                if ret == 0 and output.strip():
+                    info["total_memory_mb"] = int(output.strip()) // (1024 * 1024)
+            except (ValueError, OSError):
+                info["total_memory_mb"] = 0
+        else:
+            # Linux: use /proc/cpuinfo
+            try:
+                with open("/proc/cpuinfo", "r") as f:
+                    for line in f:
+                        if line.startswith("model name"):
+                            info["cpu_model"] = line.split(":", 1)[1].strip()
+                            break
+                        elif line.startswith("Hardware"):
+                            info["cpu_model"] = line.split(":", 1)[1].strip()
+                            break
+            except (IOError, OSError):
+                info["cpu_model"] = "unknown"
+
+            # Linux memory
+            try:
+                output, _ = self.run_command(["free", "-m"])
+                match = re.search(r"Mem:\s+(\d+)", output)
+                if match:
+                    info["total_memory_mb"] = int(match.group(1))
+            except (ValueError, AttributeError):
+                info["total_memory_mb"] = 0
 
         # Get kernel and OS info
         info["kernel_version"] = platform.release()

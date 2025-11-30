@@ -298,6 +298,122 @@ class TestResultsEndpoints:
         assert response.status_code == 200
 
 
+class TestComparison:
+    """Tests for comparing multiple benchmarks (used by frontend comparison feature)"""
+
+    def test_compare_multiple_benchmarks(self, client):
+        """Test fetching multiple benchmarks for comparison"""
+        # Submit benchmarks for different architectures
+        ids = []
+        for arch in ["x86_64", "aarch64"]:
+            data = SAMPLE_BENCHMARKS[arch].copy()
+            data["hostname"] = f"compare-test-{arch}"
+            response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+            assert response.status_code == 200
+            ids.append(response.json()["id"])
+
+        # Fetch each benchmark detail (as frontend comparison does)
+        benchmarks = []
+        for bid in ids:
+            response = client.get(f"{API_PREFIX}/benchmarks/{bid}")
+            assert response.status_code == 200
+            benchmarks.append(response.json())
+
+        # Verify we got both
+        assert len(benchmarks) == 2
+        assert benchmarks[0]["id"] != benchmarks[1]["id"]
+
+        # Verify both have results we can compare
+        assert "results" in benchmarks[0]
+        assert "results" in benchmarks[1]
+
+    def test_compare_same_test_different_arch(self, client):
+        """Test comparing the same test across different architectures"""
+        # Submit x86, arm, and riscv with same test
+        ids = []
+        for arch in ["x86_64", "aarch64", "riscv64"]:
+            response = client.post(
+                f"{API_PREFIX}/benchmarks", json=SAMPLE_BENCHMARKS[arch]
+            )
+            assert response.status_code == 200
+            ids.append(response.json()["id"])
+
+        # Fetch all and verify openssl_aes256 results exist
+        for bid in ids:
+            response = client.get(f"{API_PREFIX}/benchmarks/{bid}")
+            assert response.status_code == 200
+            data = response.json()
+            test_names = [r["test_name"] for r in data["results"]]
+            assert "openssl_aes256" in test_names
+
+    def test_dmi_info_in_list_and_detail(self, client):
+        """Test that dmi_info is returned in both list and detail views"""
+        # Submit with dmi_info
+        data = SAMPLE_BENCHMARKS["x86_64"].copy()
+        data["hostname"] = "test-dmi-compare"
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        # Check list includes dmi_info
+        response = client.get(f"{API_PREFIX}/benchmarks?hostname=test-dmi-compare")
+        assert response.status_code == 200
+        items = response.json()
+        assert len(items) > 0
+        assert "dmi_info" in items[0]
+        assert items[0]["dmi_info"]["manufacturer"] == "LENOVO"
+
+        # Check detail includes dmi_info
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "dmi_info" in data
+        assert data["dmi_info"]["manufacturer"] == "LENOVO"
+
+
+class TestConsoleOutput:
+    """Tests for console output storage"""
+
+    def test_submit_with_console_output(self, client):
+        """Test submitting benchmark with console output"""
+        data = SAMPLE_BENCHMARKS["x86_64"].copy()
+        data["hostname"] = "test-console-output"
+        data["console_output"] = "=== BENCHCOM ===\nRunning tests...\nComplete!"
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        # Verify it's stored
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "console_output" in data
+        assert data["console_output"] == "=== BENCHCOM ===\nRunning tests...\nComplete!"
+
+    def test_submit_without_console_output(self, client):
+        """Test that console_output is optional"""
+        data = SAMPLE_BENCHMARKS["x86_64"].copy()
+        data["hostname"] = "test-no-console"
+        # Don't include console_output
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("console_output") is None
+
+    def test_large_console_output(self, client):
+        """Test storing large console output"""
+        large_output = "\n".join([f"Line {i}: " + "x" * 100 for i in range(1000)])
+        data = SAMPLE_BENCHMARKS["x86_64"].copy()
+        data["hostname"] = "test-large-console"
+        data["console_output"] = large_output
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+
+
 class TestEdgeCases:
     def test_special_characters_in_hostname(self, client):
         """Test hostname with special characters"""

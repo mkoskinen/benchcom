@@ -76,6 +76,21 @@ function BenchmarkList({
     return dotIndex > 0 ? hostname.substring(0, dotIndex) : hostname;
   };
 
+  const formatSystem = (dmi: Record<string, string> | null) => {
+    if (!dmi) return "—";
+    const parts = [];
+    if (dmi.manufacturer && dmi.manufacturer !== "Unknown") {
+      parts.push(dmi.manufacturer);
+    }
+    if (dmi.product && dmi.product !== "Unknown") {
+      parts.push(dmi.product);
+    }
+    if (dmi.chip) {
+      parts.push(dmi.chip);
+    }
+    return parts.length > 0 ? parts.join(" ") : "—";
+  };
+
   return (
     <table className="benchmark-table">
       <thead>
@@ -84,6 +99,7 @@ function BenchmarkList({
           <th className="sortable" onClick={() => handleSort("hostname")}>
             Hostname{getSortIndicator("hostname")}
           </th>
+          <th>System</th>
           <th className="sortable" onClick={() => handleSort("architecture")}>
             Arch{getSortIndicator("architecture")}
           </th>
@@ -115,6 +131,9 @@ function BenchmarkList({
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 <strong>{cropHostname(benchmark.hostname)}</strong>
+              </td>
+              <td className="clickable" onClick={() => onSelect(benchmark.id)}>
+                {formatSystem(benchmark.dmi_info)}
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 {benchmark.architecture}

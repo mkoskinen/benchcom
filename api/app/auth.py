@@ -32,7 +32,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+        to_encode, settings.jwt_secret_key, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
 
@@ -83,7 +83,7 @@ async def get_current_user(
     try:
         token = credentials.credentials
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, settings.jwt_secret_key, algorithms=[settings.ALGORITHM]
         )
         user_id: int = payload.get("sub")
         if user_id is None:

@@ -9,6 +9,7 @@ export interface Benchmark {
   benchmark_version: string;
   username: string | null;
   result_count: number;
+  dmi_info: Record<string, string> | null;
 }
 
 export interface BenchmarkDetail {

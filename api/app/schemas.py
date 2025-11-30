@@ -71,6 +71,7 @@ class BenchmarkRunResponse(BaseModel):
     benchmark_version: str
     username: Optional[str]
     result_count: int
+    dmi_info: Optional[Dict[str, str]]
 
 
 class BenchmarkRunDetail(BaseModel):
