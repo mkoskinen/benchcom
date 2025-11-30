@@ -17,16 +17,6 @@ from typing import Optional, List, Dict, Any, Tuple
 # Version info
 BENCHCOM_VERSION = "1.1"
 
-# ASCII art logo
-LOGO = r"""
-██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
-██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║
-██████╔╝█████╗  ██╔██╗ ██║██║     ███████║██║     ██║   ██║██╔████╔██║
-██╔══██╗██╔══╝  ██║╚██╗██║██║     ██╔══██║██║     ██║   ██║██║╚██╔╝██║
-██████╔╝███████╗██║ ╚████║╚██████╗██║  ██║╚██████╗╚██████╔╝██║ ╚═╝ ██║
-╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝
-"""
-
 
 class BenchmarkResult:
     def __init__(
@@ -916,11 +906,6 @@ class BenchmarkRunner:
 
 
 def main():
-    # Print logo immediately at startup
-    print(LOGO)
-    print(f"v{BENCHCOM_VERSION} - Universal Benchmark Suite")
-    print("")
-
     parser = argparse.ArgumentParser(description=f"BENCHCOM v{BENCHCOM_VERSION} - Universal Linux Benchmark")
     parser.add_argument("--api-url", help="API URL to submit results to")
     parser.add_argument("--api-token", help="API authentication token")

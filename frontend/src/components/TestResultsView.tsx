@@ -23,6 +23,11 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
 
+  // Filters
+  const [selectedArchitectures, setSelectedArchitectures] = useState<Set<string>>(new Set());
+  const [selectedCpus, setSelectedCpus] = useState<Set<string>>(new Set());
+  const [selectedHosts, setSelectedHosts] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchResults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,6 +80,28 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     }
   };
 
+  const toggleFilter = (
+    value: string,
+    selected: Set<string>,
+    setSelected: React.Dispatch<React.SetStateAction<Set<string>>>
+  ) => {
+    const newSet = new Set(selected);
+    if (newSet.has(value)) {
+      newSet.delete(value);
+    } else {
+      newSet.add(value);
+    }
+    setSelected(newSet);
+  };
+
+  const clearFilters = () => {
+    setSelectedArchitectures(new Set());
+    setSelectedCpus(new Set());
+    setSelectedHosts(new Set());
+  };
+
+  const hasFilters = selectedArchitectures.size > 0 || selectedCpus.size > 0 || selectedHosts.size > 0;
+
   const getSortIndicator = (field: SortField) => {
     if (sortField !== field) return "";
     return sortDirection === "asc" ? " ▲" : " ▼";
@@ -85,8 +112,37 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     return unit?.toLowerCase()?.includes("second") ?? false;
   }, [unit]);
 
+  // Extract unique values for filters
+  const uniqueArchitectures = useMemo(() => {
+    return [...new Set(results.map(r => r.architecture))].sort();
+  }, [results]);
+
+  const uniqueCpus = useMemo(() => {
+    return [...new Set(results.map(r => r.cpu_model || "Unknown"))].sort();
+  }, [results]);
+
+  const uniqueHosts = useMemo(() => {
+    return [...new Set(results.map(r => r.hostname))].sort();
+  }, [results]);
+
+  // Filter results
+  const filteredResults = useMemo(() => {
+    return results.filter(r => {
+      if (selectedArchitectures.size > 0 && !selectedArchitectures.has(r.architecture)) {
+        return false;
+      }
+      if (selectedCpus.size > 0 && !selectedCpus.has(r.cpu_model || "Unknown")) {
+        return false;
+      }
+      if (selectedHosts.size > 0 && !selectedHosts.has(r.hostname)) {
+        return false;
+      }
+      return true;
+    });
+  }, [results, selectedArchitectures, selectedCpus, selectedHosts]);
+
   const sortedResults = useMemo(() => {
-    return [...results].sort((a, b) => {
+    return [...filteredResults].sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
 
@@ -107,7 +163,7 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
 
       return 0;
     });
-  }, [results, sortField, sortDirection]);
+  }, [filteredResults, sortField, sortDirection]);
 
   // Find best value for percentage calculation
   const bestValue = useMemo(() => {
@@ -119,7 +175,7 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
 
   // For chart: sort by value (best first)
   const chartResults = useMemo(() => {
-    return [...results]
+    return [...filteredResults]
       .filter(r => r.value !== null)
       .sort((a, b) => {
         if (a.value === null) return 1;
@@ -127,7 +183,7 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
         return isLowerBetter ? a.value - b.value : b.value - a.value;
       })
       .slice(0, 15); // Show top 15
-  }, [results, isLowerBetter]);
+  }, [filteredResults, isLowerBetter]);
 
   // Calculate max value for bar width scaling
   const maxValue = useMemo(() => {
@@ -205,6 +261,51 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
         >
           Table
         </button>
+      </div>
+
+      {/* Filters */}
+      <div className="filter-section">
+        <div className="filter-group">
+          <span className="filter-label">Architecture:</span>
+          {uniqueArchitectures.map(arch => (
+            <button
+              key={arch}
+              className={`filter-chip ${selectedArchitectures.has(arch) ? "active" : ""}`}
+              onClick={() => toggleFilter(arch, selectedArchitectures, setSelectedArchitectures)}
+            >
+              {arch}
+            </button>
+          ))}
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">CPU:</span>
+          {uniqueCpus.map(cpu => (
+            <button
+              key={cpu}
+              className={`filter-chip ${selectedCpus.has(cpu) ? "active" : ""}`}
+              onClick={() => toggleFilter(cpu, selectedCpus, setSelectedCpus)}
+            >
+              {cpu}
+            </button>
+          ))}
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Host:</span>
+          {uniqueHosts.map(host => (
+            <button
+              key={host}
+              className={`filter-chip ${selectedHosts.has(host) ? "active" : ""}`}
+              onClick={() => toggleFilter(host, selectedHosts, setSelectedHosts)}
+            >
+              {host}
+            </button>
+          ))}
+        </div>
+        {hasFilters && (
+          <button className="filter-clear" onClick={clearFilters}>
+            Clear filters
+          </button>
+        )}
       </div>
 
       {selectedForCompare.length > 0 && (

@@ -8,9 +8,18 @@ set -e
 BENCHCOM_VERSION="1.1"
 BENCHCOM_BASE_URL="${BENCHCOM_BASE_URL:-https://raw.githubusercontent.com/mkoskinen/benchcom/main}"
 
-echo "================================"
-echo "BENCHCOM v${BENCHCOM_VERSION}"
-echo "================================"
+# Print ASCII logo
+cat << 'EOF'
+
+██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
+██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║
+██████╔╝█████╗  ██╔██╗ ██║██║     ███████║██║     ██║   ██║██╔████╔██║
+██╔══██╗██╔══╝  ██║╚██╗██║██║     ██╔══██║██║     ██║   ██║██║╚██╔╝██║
+██████╔╝███████╗██║ ╚████║╚██████╗██║  ██║╚██████╗╚██████╔╝██║ ╚═╝ ██║
+╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝
+
+EOF
+echo "v${BENCHCOM_VERSION} - Universal Benchmark Suite"
 echo ""
 
 # Parse arguments - install deps by default, --no-install-deps to skip
@@ -247,11 +256,5 @@ if ! $PYTHON_CMD -c "import requests" 2>/dev/null; then
 fi
 
 # Run the benchmark
-echo ""
-echo "================================"
-echo "Running Benchmark"
-echo "================================"
-echo ""
-
 cd "$CLIENT_DIR"
-$PYTHON_CMD benchcom.py "$@"
+$PYTHON_CMD benchcom.py "${ARGS[@]}"
