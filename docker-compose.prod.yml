@@ -1,0 +1,39 @@
+# Production docker-compose for use with external PostgreSQL
+# Usage: podman-compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+# 1. Create .env file from .env.template
+# 2. Set POSTGRES_HOST to your postgres server (e.g., localhost, 192.168.1.x, host.docker.internal)
+# 3. Create the database and user in postgres:
+#    CREATE USER benchcom WITH PASSWORD 'your-password';
+#    CREATE DATABASE benchcom OWNER benchcom;
+#
+# Note: Use "host.containers.internal" for podman or "host.docker.internal" for docker
+# to connect to postgres running on the host machine
+
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: benchcom-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: benchcom-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
