@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { TestResult } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+type SortField = "cpu_model" | "hostname" | "architecture" | "value" | "submitted_at";
+type SortDirection = "asc" | "desc";
 
 interface TestResultsViewProps {
   testName: string;
@@ -15,6 +18,8 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [sortField, setSortField] = useState<SortField>("value");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   useEffect(() => {
     fetchResults();
@@ -58,14 +63,59 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     }
   };
 
-  const getPercentage = (value: number | null, index: number) => {
-    if (value === null || results.length === 0) return null;
-    const bestValue = results[0].value;
-    if (bestValue === null || bestValue === 0) return null;
-    if (index === 0) return null; // Best result, no percentage
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      // Default to desc for value (higher is usually better), asc for strings
+      setSortDirection(field === "value" ? "desc" : "asc");
+    }
+  };
 
-    const unit = results[0].unit?.toLowerCase() || "";
-    const isLowerBetter = unit.includes("second");
+  const getSortIndicator = (field: SortField) => {
+    if (sortField !== field) return "";
+    return sortDirection === "asc" ? " ▲" : " ▼";
+  };
+
+  const unit = results.length > 0 ? results[0].unit : null;
+  const isLowerBetter = unit?.toLowerCase().includes("second");
+
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      // Handle nulls
+      if (aVal === null) return 1;
+      if (bVal === null) return -1;
+
+      // String comparison
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        const cmp = aVal.localeCompare(bVal);
+        return sortDirection === "asc" ? cmp : -cmp;
+      }
+
+      // Number comparison
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      return 0;
+    });
+  }, [results, sortField, sortDirection]);
+
+  // Find best value for percentage calculation
+  const bestValue = useMemo(() => {
+    if (results.length === 0) return null;
+    const values = results.map(r => r.value).filter((v): v is number => v !== null);
+    if (values.length === 0) return null;
+    return isLowerBetter ? Math.min(...values) : Math.max(...values);
+  }, [results, isLowerBetter]);
+
+  const getPercentage = (value: number | null) => {
+    if (value === null || bestValue === null || bestValue === 0) return null;
+    if (value === bestValue) return null; // Best result, no percentage
 
     if (isLowerBetter) {
       // For time: how much slower (higher is worse)
@@ -92,9 +142,6 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
       </div>
     );
   }
-
-  const unit = results.length > 0 ? results[0].unit : null;
-  const isLowerBetter = unit?.toLowerCase().includes("second");
 
   return (
     <div>
@@ -127,23 +174,31 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
         <thead>
           <tr>
             <th className="checkbox-col">Compare</th>
-            <th className="rank-col">#</th>
-            <th>CPU</th>
-            <th>Host</th>
-            <th>Arch</th>
-            <th className="value-col">Result</th>
+            <th className="sortable" onClick={() => handleSort("cpu_model")}>
+              CPU{getSortIndicator("cpu_model")}
+            </th>
+            <th className="sortable" onClick={() => handleSort("hostname")}>
+              Host{getSortIndicator("hostname")}
+            </th>
+            <th className="sortable" onClick={() => handleSort("architecture")}>
+              Arch{getSortIndicator("architecture")}
+            </th>
+            <th className="value-col sortable" onClick={() => handleSort("value")}>
+              Result{getSortIndicator("value")}
+            </th>
             <th className="pct-col">vs Best</th>
             <th>Unit</th>
           </tr>
         </thead>
         <tbody>
-          {results.map((result, index) => {
+          {sortedResults.map((result) => {
             const isSelected = selectedForCompare.includes(result.run_id);
-            const pct = getPercentage(result.value, index);
+            const pct = getPercentage(result.value);
+            const isBest = result.value === bestValue;
             return (
               <tr
                 key={result.id}
-                className={`${index === 0 ? "best-row" : ""} ${isSelected ? "selected" : ""}`}
+                className={`${isBest ? "best-row" : ""} ${isSelected ? "selected" : ""}`}
               >
                 <td className="checkbox-col">
                   <input
@@ -152,11 +207,10 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
                     onChange={() => handleToggleCompare(result.run_id)}
                   />
                 </td>
-                <td className="rank-col">{index + 1}</td>
                 <td>{result.cpu_model || "—"}</td>
                 <td>{result.hostname}</td>
                 <td>{result.architecture}</td>
-                <td className={`value-col ${index === 0 ? "best" : ""}`}>
+                <td className={`value-col ${isBest ? "best" : ""}`}>
                   {formatValue(result.value)}
                 </td>
                 <td className={`pct-col ${pct ? "slower" : ""}`}>{pct || "—"}</td>

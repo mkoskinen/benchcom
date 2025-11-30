@@ -1,4 +1,8 @@
+import { useState, useMemo } from "react";
 import { Benchmark } from "../types";
+
+type SortField = "hostname" | "architecture" | "cpu_model" | "cpu_cores" | "result_count" | "submitted_at";
+type SortDirection = "asc" | "desc";
 
 interface BenchmarkListProps {
   benchmarks: Benchmark[];
@@ -13,9 +17,50 @@ function BenchmarkList({
   selectedForCompare,
   onToggleCompare,
 }: BenchmarkListProps) {
+  const [sortField, setSortField] = useState<SortField>("submitted_at");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const sortedBenchmarks = useMemo(() => {
+    return [...benchmarks].sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      // Handle nulls
+      if (aVal === null) return 1;
+      if (bVal === null) return -1;
+
+      // String comparison
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        const cmp = aVal.localeCompare(bVal);
+        return sortDirection === "asc" ? cmp : -cmp;
+      }
+
+      // Number comparison
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      return 0;
+    });
+  }, [benchmarks, sortField, sortDirection]);
+
   if (benchmarks.length === 0) {
     return <div className="empty">No benchmarks found.</div>;
   }
+
+  const getSortIndicator = (field: SortField) => {
+    if (sortField !== field) return "";
+    return sortDirection === "asc" ? " ▲" : " ▼";
+  };
 
   const formatDate = (dateString: string) => {
     const d = new Date(dateString);
@@ -36,16 +81,28 @@ function BenchmarkList({
       <thead>
         <tr>
           <th className="checkbox-col">Compare</th>
-          <th>Hostname</th>
-          <th>Arch</th>
-          <th>CPU</th>
-          <th>Cores</th>
-          <th>Tests</th>
-          <th>Submitted</th>
+          <th className="sortable" onClick={() => handleSort("hostname")}>
+            Hostname{getSortIndicator("hostname")}
+          </th>
+          <th className="sortable" onClick={() => handleSort("architecture")}>
+            Arch{getSortIndicator("architecture")}
+          </th>
+          <th className="sortable" onClick={() => handleSort("cpu_model")}>
+            CPU{getSortIndicator("cpu_model")}
+          </th>
+          <th className="sortable" onClick={() => handleSort("cpu_cores")}>
+            Cores{getSortIndicator("cpu_cores")}
+          </th>
+          <th className="sortable" onClick={() => handleSort("result_count")}>
+            Tests{getSortIndicator("result_count")}
+          </th>
+          <th className="sortable" onClick={() => handleSort("submitted_at")}>
+            Submitted{getSortIndicator("submitted_at")}
+          </th>
         </tr>
       </thead>
       <tbody>
-        {benchmarks.map((benchmark) => {
+        {sortedBenchmarks.map((benchmark) => {
           const isSelected = selectedForCompare.includes(benchmark.id);
           return (
             <tr key={benchmark.id} className={isSelected ? "selected" : ""}>

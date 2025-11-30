@@ -294,7 +294,11 @@ class BenchmarkRunner:
         """Run PassMark PerformanceTest Linux"""
         pt_paths = [
             "/opt/passmark/pt_linux/pt_linux",
+            "/opt/passmark/PerformanceTest/PerformanceTest_Linux_x86-64",
+            "/opt/passmark/PerformanceTest/PerformanceTest_Linux_ARM64",
             "/opt/passmark/PerformanceTest/pt_linux_x64",
+            "/opt/passmark/pt_linux_x64",
+            "/opt/passmark/pt_linux_arm64",
             "/usr/local/bin/pt_linux",
             "pt_linux",
         ]

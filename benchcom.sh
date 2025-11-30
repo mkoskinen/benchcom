@@ -103,15 +103,15 @@ install_passmark() {
     case $arch in
         x86_64)
             url="https://www.passmark.com/downloads/PerformanceTest_Linux_x86-64.zip"
-            pt_binary="pt_linux_x64"
+            pt_binary="PerformanceTest_Linux_x86-64"
             ;;
         aarch64)
             url="https://www.passmark.com/downloads/PerformanceTest_Linux_ARM64.zip"
-            pt_binary="pt_linux_arm64"
+            pt_binary="PerformanceTest_Linux_ARM64"
             ;;
         armv7l|armhf)
             url="https://www.passmark.com/downloads/PerformanceTest_Linux_ARM32.zip"
-            pt_binary="pt_linux_arm"
+            pt_binary="PerformanceTest_Linux_ARM32"
             ;;
         *)
             echo "Warning: PassMark not available for architecture: $arch"
@@ -121,8 +121,8 @@ install_passmark() {
 
     echo "Downloading PassMark PerformanceTest for $arch..."
 
-    # Check if already installed
-    if [ -f "$pt_dir/pt_linux/pt_linux" ] || [ -f "$pt_dir/$pt_binary" ]; then
+    # Check if already installed (may be in subdirectory from zip)
+    if [ -f "$pt_dir/pt_linux/pt_linux" ] || [ -f "$pt_dir/$pt_binary" ] || [ -f "$pt_dir/PerformanceTest/$pt_binary" ]; then
         echo "PassMark already installed at $pt_dir"
         return 0
     fi
@@ -132,12 +132,18 @@ install_passmark() {
 
     if curl -fsSL -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" "$url" -o "$tmpzip"; then
         sudo unzip -o "$tmpzip" -d "$pt_dir"
-        # Handle different binary names
-        if [ -f "$pt_dir/$pt_binary" ]; then
-            sudo chmod +x "$pt_dir/$pt_binary"
-            sudo ln -sf "$pt_dir/$pt_binary" "$pt_dir/pt_linux"
+        # Find and make executable the binary (may be in subdirectory)
+        local found_binary=""
+        for binary_path in "$pt_dir/$pt_binary" "$pt_dir/PerformanceTest/$pt_binary"; do
+            if [ -f "$binary_path" ]; then
+                found_binary="$binary_path"
+                sudo chmod +x "$binary_path"
+                break
+            fi
+        done
+        if [ -n "$found_binary" ]; then
+            echo "PassMark binary found at $found_binary"
         fi
-        sudo chmod +x "$pt_dir/pt_linux" 2>/dev/null || true
         rm -f "$tmpzip"
         echo "PassMark installed to $pt_dir/"
     else
