@@ -181,8 +181,15 @@ class BenchmarkRunner:
 
         # Single thread
         self.log("=== 7-ZIP BENCHMARK (1 thread) ===")
+        # Try modern 7z/7zz first with -mmt1, fall back to 7za b (no thread control)
         output, ret = self.run_command([cmd_7z, "b", "-mmt1"], timeout=120)
-        if output and ret == 0:
+        # Check if benchmark actually ran (look for MIPS output, not usage help)
+        has_benchmark_output = output and ("MIPS" in output or "Avr:" in output or "Tot:" in output)
+        if not has_benchmark_output and cmd_7z in ["7z", "7za"]:
+            # p7zip 16.02 and older don't support -mmt flag, try without it
+            output, ret = self.run_command([cmd_7z, "b"], timeout=120)
+            has_benchmark_output = output and ("MIPS" in output or "Avr:" in output or "Tot:" in output)
+        if has_benchmark_output and ret == 0:
             with open(self.output_dir / "7zip_1t.txt", "w") as f:
                 f.write(output)
 
@@ -193,13 +200,22 @@ class BenchmarkRunner:
                 mips = float(match.group(1))
                 self.add_result("7zip_st", "compression", mips, "MIPS", output)
                 self.log(f"  Single-thread: {mips:.0f} MIPS")
+            else:
+                self.log("  Could not parse 7zip output")
         elif ret != 0:
             self.log(f"  7zip benchmark failed (exit code {ret})")
+        else:
+            self.log("  7zip benchmark not supported on this version")
 
         # Multi-thread (all cores) - use consistent name regardless of core count
         self.log(f"=== 7-ZIP BENCHMARK ({self.cores} threads) ===")
         output, ret = self.run_command([cmd_7z, "b", f"-mmt{self.cores}"], timeout=120)
-        if output and ret == 0:
+        has_benchmark_output = output and ("MIPS" in output or "Avr:" in output or "Tot:" in output)
+        if not has_benchmark_output and cmd_7z in ["7z", "7za"]:
+            # p7zip 16.02 and older don't support -mmt flag - skip MT test
+            # (can't control thread count, already ran default in ST test)
+            self.log("  Skipping MT test (p7zip version doesn't support thread control)")
+        elif has_benchmark_output and ret == 0:
             with open(self.output_dir / f"7zip_{self.cores}t.txt", "w") as f:
                 f.write(output)
 
@@ -209,8 +225,12 @@ class BenchmarkRunner:
                 self.add_result("7zip_mt", "compression", mips, "MIPS", output,
                                metrics={"threads": self.cores})
                 self.log(f"  Multi-thread ({self.cores}): {mips:.0f} MIPS")
+            else:
+                self.log("  Could not parse 7zip output")
         elif ret != 0:
             self.log(f"  7zip benchmark failed (exit code {ret})")
+        else:
+            self.log("  7zip benchmark not supported on this version")
 
         self.log("")
 
@@ -392,6 +412,25 @@ class BenchmarkRunner:
             cmd.append("run")
         return cmd
 
+    def _parse_sysbench_events_per_sec(self, output: str) -> Optional[float]:
+        """Parse sysbench output for events per second (handles both legacy and modern formats)"""
+        # Modern sysbench 1.x format: "events per second: 1234.56"
+        match = re.search(r"events per second:\s+([\d.]+)", output)
+        if match:
+            return float(match.group(1))
+
+        # Legacy sysbench 0.4.x format: calculate from total events and total time
+        # Look for "total number of events: 1234" and "total time: 10.0012s"
+        events_match = re.search(r"total number of events:\s+(\d+)", output)
+        time_match = re.search(r"total time:\s+([\d.]+)s", output)
+        if events_match and time_match:
+            total_events = int(events_match.group(1))
+            total_time = float(time_match.group(1))
+            if total_time > 0:
+                return total_events / total_time
+
+        return None
+
     def run_sysbench_cpu(self):
         """Run sysbench CPU benchmark"""
         if not self.check_command("sysbench"):
@@ -410,10 +449,9 @@ class BenchmarkRunner:
             with open(self.output_dir / "sysbench_cpu_1t.txt", "w") as f:
                 f.write(output)
 
-            # Extract events per second
-            match = re.search(r"events per second:\s+([\d.]+)", output)
-            if match:
-                eps = float(match.group(1))
+            # Extract events per second (handles both legacy and modern formats)
+            eps = self._parse_sysbench_events_per_sec(output)
+            if eps is not None:
                 self.add_result("sysbench_cpu_st", "cpu", eps, "events/sec", output)
                 self.log(f"  Single-thread: {eps:.2f} events/sec")
             else:
@@ -428,9 +466,8 @@ class BenchmarkRunner:
             with open(self.output_dir / f"sysbench_cpu_{self.cores}t.txt", "w") as f:
                 f.write(output)
 
-            match = re.search(r"events per second:\s+([\d.]+)", output)
-            if match:
-                eps = float(match.group(1))
+            eps = self._parse_sysbench_events_per_sec(output)
+            if eps is not None:
                 # Use "sysbench_cpu_mt" for all multi-thread results (comparable across systems)
                 self.add_result("sysbench_cpu_mt", "cpu", eps, "events/sec", output,
                                metrics={"threads": self.cores})
@@ -462,8 +499,10 @@ class BenchmarkRunner:
             with open(self.output_dir / "sysbench_memory.txt", "w") as f:
                 f.write(output)
 
-            # Extract MiB/sec
-            match = re.search(r"([\d.]+) MiB/sec", output)
+            # Extract MiB/sec (modern) or MB/sec (legacy)
+            match = re.search(r"([\d.]+)\s*MiB/sec", output)
+            if not match:
+                match = re.search(r"([\d.]+)\s*MB/sec", output)
             if match:
                 speed = float(match.group(1))
                 self.add_result("sysbench_memory", "memory", speed, "MiB/sec", output)
