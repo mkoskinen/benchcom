@@ -30,8 +30,12 @@ export interface BenchmarkDetail {
   tags: Record<string, any> | null;
   notes: string | null;
   dmi_info: Record<string, string> | null;
+  console_output: string | null;
   username: string | null;
   results: BenchmarkResult[];
+  // Sensitive fields (only visible to admins or the submitter)
+  submitter_ip: string | null;
+  user_id: number | null;
 }
 
 export interface BenchmarkResult {
@@ -62,4 +66,32 @@ export interface TestResult {
   cpu_cores: number | null;
   architecture: string;
   submitted_at: string;
+  dmi_info: Record<string, string> | null;
+}
+
+// Auth types
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  is_active: boolean;
+  is_admin: boolean;
+  created_at: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  username: string;
+  email: string;
+  password: string;
 }

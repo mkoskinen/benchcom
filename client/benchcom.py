@@ -52,6 +52,8 @@ class BenchmarkRunner:
         output_dir: Optional[str] = None,
         api_url: Optional[str] = None,
         api_token: Optional[str] = None,
+        api_username: Optional[str] = None,
+        api_password: Optional[str] = None,
         fast: bool = False,
         full: bool = False,
     ):
@@ -61,6 +63,8 @@ class BenchmarkRunner:
         self.results: List[BenchmarkResult] = []
         self.api_url = api_url
         self.api_token = api_token
+        self.api_username = api_username
+        self.api_password = api_password
         self.fast = fast
         self.full = full
         self.tool_versions: Dict[str, str] = {}
@@ -771,6 +775,42 @@ class BenchmarkRunner:
 
         return results_file
 
+    def login_to_api(self) -> Optional[str]:
+        """Login to API with username/password and return access token"""
+        if not self.api_url or not self.api_username or not self.api_password:
+            return None
+
+        try:
+            import requests
+        except ImportError:
+            self.log("✗ requests library not available for API login")
+            return None
+
+        self.log(f"Logging in as '{self.api_username}'...")
+
+        try:
+            response = requests.post(
+                f"{self.api_url}/api/v1/login",
+                params={"username": self.api_username, "password": self.api_password},
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                token = data.get("access_token")
+                if token:
+                    self.log(f"✓ Login successful")
+                    return token
+                else:
+                    self.log("✗ Login failed: no token in response")
+            else:
+                self.log(f"✗ Login failed (HTTP {response.status_code})")
+                self.log(f"  Response: {response.text}")
+        except Exception as e:
+            self.log(f"✗ Login error: {e}")
+
+        return None
+
     def submit_to_api(self, results_file: Path):
         """Submit results to API"""
         if not self.api_url:
@@ -786,6 +826,14 @@ class BenchmarkRunner:
         self.log("================================")
         self.log(f"Submitting to API: {self.api_url}")
         self.log("================================")
+
+        # If username/password provided, login to get token
+        token = self.api_token
+        if self.api_username and self.api_password:
+            token = self.login_to_api()
+            if not token and not self.api_token:
+                # Login failed and no fallback token
+                self.log("Continuing with anonymous submission...")
 
         # Load results
         with open(results_file, "r") as f:
@@ -810,8 +858,8 @@ class BenchmarkRunner:
 
         # Submit
         headers = {"Content-Type": "application/json"}
-        if self.api_token:
-            headers["Authorization"] = f"Bearer {self.api_token}"
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
 
         try:
             response = requests.post(
@@ -908,7 +956,9 @@ class BenchmarkRunner:
 def main():
     parser = argparse.ArgumentParser(description=f"BENCHCOM v{BENCHCOM_VERSION} - Universal Linux Benchmark")
     parser.add_argument("--api-url", help="API URL to submit results to")
-    parser.add_argument("--api-token", help="API authentication token")
+    parser.add_argument("--api-token", help="API authentication token (JWT)")
+    parser.add_argument("--api-username", help="API username (alternative to --api-token)")
+    parser.add_argument("--api-password", help="API password (use with --api-username)")
     parser.add_argument("--output-dir", help="Output directory for results")
     parser.add_argument(
         "--fast", action="store_true", help="Fast mode: only run openssl (quick)"
@@ -926,6 +976,8 @@ def main():
         output_dir=args.output_dir,
         api_url=args.api_url,
         api_token=args.api_token,
+        api_username=args.api_username,
+        api_password=args.api_password,
         fast=args.fast,
         full=args.full,
     )

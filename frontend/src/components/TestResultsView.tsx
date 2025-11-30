@@ -27,6 +27,7 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
   const [selectedArchitectures, setSelectedArchitectures] = useState<Set<string>>(new Set());
   const [selectedCpus, setSelectedCpus] = useState<Set<string>>(new Set());
   const [selectedHosts, setSelectedHosts] = useState<Set<string>>(new Set());
+  const [selectedSystems, setSelectedSystems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchResults();
@@ -98,9 +99,10 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     setSelectedArchitectures(new Set());
     setSelectedCpus(new Set());
     setSelectedHosts(new Set());
+    setSelectedSystems(new Set());
   };
 
-  const hasFilters = selectedArchitectures.size > 0 || selectedCpus.size > 0 || selectedHosts.size > 0;
+  const hasFilters = selectedArchitectures.size > 0 || selectedCpus.size > 0 || selectedHosts.size > 0 || selectedSystems.size > 0;
 
   const getSortIndicator = (field: SortField) => {
     if (sortField !== field) return "";
@@ -125,6 +127,24 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     return [...new Set(results.map(r => r.hostname))].sort();
   }, [results]);
 
+  // Helper to get system type string from dmi_info
+  const getSystemType = (dmi: Record<string, string> | null): string => {
+    if (!dmi) return "Unknown";
+    // Try product first, then manufacturer + product combo
+    if (dmi.product) {
+      if (dmi.manufacturer && dmi.manufacturer !== "Unknown") {
+        return `${dmi.manufacturer} ${dmi.product}`;
+      }
+      return dmi.product;
+    }
+    if (dmi.manufacturer) return dmi.manufacturer;
+    return "Unknown";
+  };
+
+  const uniqueSystems = useMemo(() => {
+    return [...new Set(results.map(r => getSystemType(r.dmi_info)))].sort();
+  }, [results]);
+
   // Filter results
   const filteredResults = useMemo(() => {
     return results.filter(r => {
@@ -137,9 +157,12 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
       if (selectedHosts.size > 0 && !selectedHosts.has(r.hostname)) {
         return false;
       }
+      if (selectedSystems.size > 0 && !selectedSystems.has(getSystemType(r.dmi_info))) {
+        return false;
+      }
       return true;
     });
-  }, [results, selectedArchitectures, selectedCpus, selectedHosts]);
+  }, [results, selectedArchitectures, selectedCpus, selectedHosts, selectedSystems]);
 
   const sortedResults = useMemo(() => {
     return [...filteredResults].sort((a, b) => {
@@ -274,6 +297,18 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
               onClick={() => toggleFilter(arch, selectedArchitectures, setSelectedArchitectures)}
             >
               {arch}
+            </button>
+          ))}
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">System:</span>
+          {uniqueSystems.map(sys => (
+            <button
+              key={sys}
+              className={`filter-chip ${selectedSystems.has(sys) ? "active" : ""}`}
+              onClick={() => toggleFilter(sys, selectedSystems, setSelectedSystems)}
+            >
+              {sys}
             </button>
           ))}
         </div>

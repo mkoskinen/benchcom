@@ -3,6 +3,8 @@ import BenchmarkList from "./components/BenchmarkList";
 import BenchmarkDetail from "./components/BenchmarkDetail";
 import BenchmarkCompare from "./components/BenchmarkCompare";
 import TestResultsView from "./components/TestResultsView";
+import AuthModal from "./components/AuthModal";
+import { useAuth } from "./context/AuthContext";
 import { Benchmark, TestInfo } from "./types";
 import axios from "axios";
 
@@ -18,6 +20,9 @@ const LOGO = `██████╗ ███████╗███╗   █�
 type View = "list" | "detail" | "compare" | "test-results";
 
 function App() {
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showRunOptions, setShowRunOptions] = useState(false);
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const [tests, setTests] = useState<TestInfo[]>([]);
   const [view, setView] = useState<View>("list");
@@ -30,6 +35,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [architecture, setArchitecture] = useState("");
   const [hostname, setHostname] = useState("");
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
 
   useEffect(() => {
     fetchBenchmarks();
@@ -147,6 +156,29 @@ function App() {
     <div className="app">
       <header className="header">
         <pre className="logo clickable" onClick={goHome}>{LOGO}</pre>
+        <div className="auth-section">
+          <a
+            href="https://github.com/mkoskinen/benchcom/blob/main/docs/ABOUT.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="about-link"
+          >
+            About & Help
+          </a>
+          <span className="auth-separator">|</span>
+          {authLoading ? null : user ? (
+            <div className="auth-user">
+              <span className="auth-username">{user.username}{user.is_admin && " (admin)"}</span>
+              <span className="auth-link" onClick={logout}>
+                Logout
+              </span>
+            </div>
+          ) : (
+            <span className="auth-link" onClick={() => setShowAuthModal(true)}>
+              Login / Register
+            </span>
+          )}
+        </div>
         <a
           href="https://github.com/mkoskinen/benchcom"
           target="_blank"
@@ -157,18 +189,95 @@ function App() {
         </a>
       </header>
 
-      <div className="curl-command">
-        <code
-          className="curl-code"
-          onClick={() => {
-            navigator.clipboard.writeText(
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+
+      <div className="run-section">
+        <div className="curl-command">
+          <code
+            className="curl-code"
+            onClick={() => copyToClipboard(
               `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL}`
-            );
-          }}
-          title="Click to copy"
-        >
-          curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url {API_URL}
-        </code>
+            )}
+            title="Click to copy"
+          >
+            curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url {API_URL}
+          </code>
+          <span
+            className="expand-toggle"
+            onClick={() => setShowRunOptions(!showRunOptions)}
+          >
+            {showRunOptions ? "[-] less" : "[+] more options"}
+          </span>
+        </div>
+
+        {showRunOptions && (
+          <div className="run-options">
+            <div className="run-option">
+              <div className="run-option-label">Quick mode (OpenSSL only):</div>
+              <code
+                className="curl-code"
+                onClick={() => copyToClipboard(
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --fast`
+                )}
+                title="Click to copy"
+              >
+                ... | bash -s -- --api-url {API_URL} --fast
+              </code>
+            </div>
+
+            <div className="run-option">
+              <div className="run-option-label">Full suite (all benchmarks):</div>
+              <code
+                className="curl-code"
+                onClick={() => copyToClipboard(
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --full`
+                )}
+                title="Click to copy"
+              >
+                ... | bash -s -- --api-url {API_URL} --full
+              </code>
+            </div>
+
+            <div className="run-option">
+              <div className="run-option-label">Skip dependency install (no sudo):</div>
+              <code
+                className="curl-code"
+                onClick={() => copyToClipboard(
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --no-install-deps`
+                )}
+                title="Click to copy"
+              >
+                ... | bash -s -- --api-url {API_URL} --no-install-deps
+              </code>
+            </div>
+
+            <div className="run-option">
+              <div className="run-option-label">With authentication:</div>
+              <code
+                className="curl-code"
+                onClick={() => copyToClipboard(
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --api-username YOUR_USER --api-password YOUR_PASS`
+                )}
+                title="Click to copy"
+              >
+                ... | bash -s -- --api-url {API_URL} --api-username USER --api-password PASS
+              </code>
+            </div>
+
+            <div className="run-option">
+              <div className="run-option-label">Download and run manually:</div>
+              <code
+                className="curl-code"
+                onClick={() => copyToClipboard(
+                  `curl -sLO https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh && chmod +x benchcom.sh && ./benchcom.sh --api-url ${API_URL}`
+                )}
+                title="Click to copy"
+              >
+                curl -sLO .../benchcom.sh && chmod +x benchcom.sh && ./benchcom.sh --api-url {API_URL}
+              </code>
+            </div>
+          </div>
+        )}
       </div>
 
       {view === "list" && (

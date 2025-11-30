@@ -620,3 +620,269 @@ button:hover {
   background: #fff;
   border: 1px solid #999;
 }
+
+/* Auth UI */
+.auth-section {
+  position: absolute;
+  top: 0;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.auth-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-username {
+  font-weight: 600;
+}
+
+.auth-link {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-link:hover {
+  text-decoration: none;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  border: 2px solid #000;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #000;
+  padding-bottom: 12px;
+}
+
+.modal-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  color: #000;
+}
+
+.modal-close:hover {
+  color: #666;
+  background: none;
+}
+
+/* Auth form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.form-group input {
+  padding: 8px 12px;
+  border: 1px solid #000;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus {
+  outline: 2px solid #000;
+  outline-offset: 1px;
+}
+
+.form-group input:disabled {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.auth-error {
+  padding: 8px 12px;
+  background: #fff0f0;
+  border: 1px solid #c00;
+  color: #c00;
+  font-size: 12px;
+}
+
+.auth-submit {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.auth-submit:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.auth-switch {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+}
+
+.auth-switch span {
+  color: #000;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-switch span:hover {
+  text-decoration: none;
+}
+
+/* About link */
+.about-link {
+  color: #000;
+  text-decoration: underline;
+  font-size: 12px;
+}
+
+.about-link:hover {
+  text-decoration: none;
+}
+
+.auth-separator {
+  color: #999;
+  margin: 0 4px;
+}
+
+/* Run section with expandable options */
+.run-section {
+  margin-bottom: 16px;
+}
+
+.curl-command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.expand-toggle {
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.expand-toggle:hover {
+  color: #000;
+  text-decoration: underline;
+}
+
+.run-options {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+}
+
+.run-option {
+  margin-bottom: 10px;
+}
+
+.run-option:last-child {
+  margin-bottom: 0;
+}
+
+.run-option-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.run-options .curl-code {
+  display: block;
+  font-size: 10px;
+}
+
+/* Admin/sensitive data section */
+.admin-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: #fff8e6;
+  border: 1px solid #e6c200;
+}
+
+.admin-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #806600;
+}
+
+.console-output-section {
+  margin-top: 12px;
+}
+
+.console-toggle {
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+
+.console-toggle:hover {
+  color: #000;
+  text-decoration: underline;
+}
+
+.console-output {
+  margin-top: 8px;
+  padding: 12px;
+  background: #1a1a1a;
+  color: #00ff00;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

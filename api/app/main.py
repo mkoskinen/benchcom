@@ -19,6 +19,7 @@ from .auth import (
     authenticate_user,
     create_access_token,
     get_current_user,
+    get_current_user_optional,
     require_auth_if_needed,
 )
 
@@ -74,7 +75,7 @@ async def register(user: UserCreate):
     query = """
         INSERT INTO users (username, email, hashed_password)
         VALUES ($1, $2, $3)
-        RETURNING id, username, email, is_active, created_at
+        RETURNING id, username, email, is_active, is_admin, created_at
     """
     result = await db.fetchrow(query, user.username, user.email, hashed_password)
     return dict(result)
@@ -270,9 +271,12 @@ async def list_benchmarks(
     f"{settings.API_V1_PREFIX}/benchmarks/{{benchmark_id}}",
     response_model=BenchmarkRunDetail,
 )
-async def get_benchmark(benchmark_id: int):
+async def get_benchmark(
+    benchmark_id: int,
+    current_user=Depends(get_current_user_optional),
+):
     """Get detailed benchmark run"""
-    # Get run details
+    # Get run details (including sensitive fields)
     run_query = """
         SELECT
             br.id,
@@ -292,6 +296,8 @@ async def get_benchmark(benchmark_id: int):
             br.notes,
             br.dmi_info,
             br.console_output,
+            br.submitter_ip,
+            br.user_id,
             u.username
         FROM benchmark_runs br
         LEFT JOIN users u ON br.user_id = u.id
@@ -311,6 +317,22 @@ async def get_benchmark(benchmark_id: int):
     results = await db.fetch(results_query, benchmark_id)
 
     run_dict = dict(run)
+
+    # Determine if user can see sensitive data
+    # Admin can see everything, user can see their own submissions
+    can_see_sensitive = False
+    if current_user:
+        is_admin = current_user.get("is_admin", False)
+        is_owner = run_dict.get("user_id") == current_user.get("id")
+        can_see_sensitive = is_admin or is_owner
+
+    # Remove sensitive fields if user doesn't have permission
+    if not can_see_sensitive:
+        run_dict["submitter_ip"] = None
+        run_dict["console_output"] = None
+        # Keep user_id as None for non-privileged users
+        run_dict["user_id"] = None
+
     # Parse tags from JSONB
     if run_dict.get("tags"):
         run_dict["tags"] = (
@@ -377,7 +399,8 @@ async def get_results_by_test(
             br.cpu_model,
             br.cpu_cores,
             br.architecture,
-            br.submitted_at
+            br.submitted_at,
+            br.dmi_info
         FROM benchmark_results bres
         JOIN benchmark_runs br ON bres.run_id = br.id
         {where_sql}
@@ -391,7 +414,18 @@ async def get_results_by_test(
     params.append(limit)
 
     rows = await db.fetch(query, *params)
-    return [dict(row) for row in rows]
+    result = []
+    for row in rows:
+        row_dict = dict(row)
+        # Parse dmi_info from JSONB
+        if row_dict.get("dmi_info"):
+            row_dict["dmi_info"] = (
+                json.loads(row_dict["dmi_info"])
+                if isinstance(row_dict["dmi_info"], str)
+                else row_dict["dmi_info"]
+            )
+        result.append(row_dict)
+    return result
 
 
 @app.get(f"{settings.API_V1_PREFIX}/tests")

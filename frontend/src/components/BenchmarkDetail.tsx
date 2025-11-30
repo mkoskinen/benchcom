@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { BenchmarkDetail as BenchmarkDetailType } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -10,21 +11,28 @@ interface BenchmarkDetailProps {
 }
 
 function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
+  const { token } = useAuth();
   const [benchmark, setBenchmark] = useState<BenchmarkDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showConsoleOutput, setShowConsoleOutput] = useState(false);
 
   useEffect(() => {
     fetchBenchmark();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [benchmarkId]);
+  }, [benchmarkId, token]);
 
   const fetchBenchmark = async () => {
     try {
       setLoading(true);
       setError(null);
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const response = await axios.get(
         `${API_URL}/api/v1/benchmarks/${benchmarkId}`,
+        { headers }
       );
       setBenchmark(response.data);
     } catch (err) {
@@ -165,6 +173,49 @@ function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
           </table>
         </div>
       ))}
+
+      {/* Sensitive data section - only visible to admins/owners */}
+      {(benchmark.submitter_ip || benchmark.console_output) && (
+        <div className="admin-section">
+          <h3>Submission Details</h3>
+          <table className="info-table">
+            <tbody>
+              {benchmark.submitter_ip && (
+                <tr>
+                  <th>Submitter IP</th>
+                  <td>{benchmark.submitter_ip}</td>
+                </tr>
+              )}
+              {benchmark.user_id && (
+                <tr>
+                  <th>User ID</th>
+                  <td>{benchmark.user_id}</td>
+                </tr>
+              )}
+              {benchmark.username && (
+                <tr>
+                  <th>Username</th>
+                  <td>{benchmark.username}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {benchmark.console_output && (
+            <div className="console-output-section">
+              <span
+                className="console-toggle"
+                onClick={() => setShowConsoleOutput(!showConsoleOutput)}
+              >
+                {showConsoleOutput ? "[-] Hide" : "[+] Show"} Console Output
+              </span>
+              {showConsoleOutput && (
+                <pre className="console-output">{benchmark.console_output}</pre>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

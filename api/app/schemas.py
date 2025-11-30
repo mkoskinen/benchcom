@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     is_active: bool
+    is_admin: bool = False
     created_at: datetime
 
 
@@ -95,3 +96,6 @@ class BenchmarkRunDetail(BaseModel):
     console_output: Optional[str]
     username: Optional[str]
     results: List[BenchmarkResultResponse]
+    # Sensitive fields (only visible to admins or the submitter)
+    submitter_ip: Optional[str] = None
+    user_id: Optional[int] = None

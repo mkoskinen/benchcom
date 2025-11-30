@@ -40,7 +40,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 async def get_user_by_username(username: str):
     """Get user from database by username"""
     query = """
-        SELECT id, username, email, hashed_password, is_active, created_at
+        SELECT id, username, email, hashed_password, is_active, is_admin, created_at
         FROM users
         WHERE username = $1
     """
@@ -50,7 +50,7 @@ async def get_user_by_username(username: str):
 async def get_user_by_id(user_id: int):
     """Get user from database by ID"""
     query = """
-        SELECT id, username, email, is_active, created_at
+        SELECT id, username, email, is_active, is_admin, created_at
         FROM users
         WHERE id = $1
     """

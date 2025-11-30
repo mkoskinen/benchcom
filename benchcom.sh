@@ -1,7 +1,7 @@
 #!/bin/bash
 # BENCHCOM - Bootstrap installer and runner
 # Usage: curl https://benchcom.example.com/benchcom.sh | bash
-# Or: ./benchcom.sh [--api-url URL] [--api-token TOKEN] [--no-install-deps]
+# Or: ./benchcom.sh [--api-url URL] [--api-token TOKEN] [--api-username USER --api-password PASS] [--no-install-deps]
 
 set -e
 
