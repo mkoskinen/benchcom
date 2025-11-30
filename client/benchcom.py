@@ -12,7 +12,7 @@ import socket
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 # Version info
 BENCHCOM_VERSION = "1.1"
@@ -94,7 +94,7 @@ class BenchmarkRunner:
         with open(self.log_file, "a") as f:
             f.write(message + "\n")
 
-    def run_command(self, cmd: List[str], timeout: int = 300) -> tuple[str, int]:
+    def run_command(self, cmd: List[str], timeout: int = 300) -> Tuple[str, int]:
         """Run a command and return (output, return_code)"""
         try:
             result = subprocess.run(
