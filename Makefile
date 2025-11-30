@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check
+.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check db-dump
 
 # Default target
 help:
@@ -27,6 +27,7 @@ help:
 	@echo ""
 	@echo "  Development:"
 	@echo "    make db-shell   - Connect to PostgreSQL shell"
+	@echo "    make db-dump    - Dump database to SQL (zstd compressed)"
 	@echo "    make api-shell  - Connect to API container shell"
 	@echo "    make lint       - Run linters (ruff, eslint)"
 	@echo "    make format     - Format code (ruff, prettier)"
@@ -65,6 +66,14 @@ clean:
 # Database shell
 db-shell:
 	podman exec -it benchcom-db psql -U benchcom -d benchcom
+
+# Dump database to SQL file (zstd compressed)
+db-dump:
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	DUMPFILE="benchcom_dump_$$TIMESTAMP.sql.zst"; \
+	echo "Dumping database to $$DUMPFILE..."; \
+	podman exec benchcom-db pg_dump -U benchcom -d benchcom | zstd -19 > $$DUMPFILE; \
+	echo "Done: $$DUMPFILE ($$(du -h $$DUMPFILE | cut -f1))"
 
 # API shell
 api-shell:

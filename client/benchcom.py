@@ -17,6 +17,16 @@ from typing import Optional, List, Dict, Any
 # Version info
 BENCHCOM_VERSION = "1.1"
 
+# ASCII art logo
+LOGO = r"""
+██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
+██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║
+██████╔╝█████╗  ██╔██╗ ██║██║     ███████║██║     ██║   ██║██╔████╔██║
+██╔══██╗██╔══╝  ██║╚██╗██║██║     ██╔══██║██║     ██║   ██║██║╚██╔╝██║
+██████╔╝███████╗██║ ╚████║╚██████╗██║  ██║╚██████╗╚██████╔╝██║ ╚═╝ ██║
+╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝
+"""
+
 
 class BenchmarkResult:
     def __init__(
@@ -723,9 +733,11 @@ class BenchmarkRunner:
 
     def run_all(self):
         """Run all benchmarks"""
-        self.log("================================")
-        self.log(f"BENCHCOM v{BENCHCOM_VERSION}")
-        self.log("Universal Benchmark Suite")
+        # Print logo
+        for line in LOGO.strip().split('\n'):
+            self.log(line)
+        self.log("")
+        self.log(f"v{BENCHCOM_VERSION} - Universal Benchmark Suite")
         if self.fast:
             self.log("(FAST MODE)")
         self.log(f"Hostname: {self.hostname}")

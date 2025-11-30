@@ -144,6 +144,28 @@ install_passmark() {
         if [ -n "$found_binary" ]; then
             echo "PassMark binary found at $found_binary"
         fi
+
+        # Create ncurses5 symlinks if needed (for systems with only ncurses6)
+        if [ "$arch" = "aarch64" ] || [ "$arch" = "x86_64" ]; then
+            local lib_dir=""
+            if [ "$arch" = "aarch64" ]; then
+                lib_dir="/usr/lib/aarch64-linux-gnu"
+            else
+                lib_dir="/usr/lib/x86_64-linux-gnu"
+            fi
+
+            if [ -d "$lib_dir" ]; then
+                if [ -f "$lib_dir/libncurses.so.6" ] && [ ! -f "$lib_dir/libncurses.so.5" ]; then
+                    echo "Creating libncurses.so.5 symlink..."
+                    sudo ln -sf "$lib_dir/libncurses.so.6" "$lib_dir/libncurses.so.5"
+                fi
+                if [ -f "$lib_dir/libtinfo.so.6" ] && [ ! -f "$lib_dir/libtinfo.so.5" ]; then
+                    echo "Creating libtinfo.so.5 symlink..."
+                    sudo ln -sf "$lib_dir/libtinfo.so.6" "$lib_dir/libtinfo.so.5"
+                fi
+            fi
+        fi
+
         rm -f "$tmpzip"
         echo "PassMark installed to $pt_dir/"
     else
