@@ -110,7 +110,7 @@ function App() {
     setSelectedForCompare([]);
   };
 
-  // Group tests by category
+  // Group tests by category and sort
   const testsByCategory = tests.reduce(
     (acc, test) => {
       const cat = test.test_category || "other";
@@ -120,6 +120,22 @@ function App() {
     },
     {} as Record<string, TestInfo[]>
   );
+
+  // Sort tests within each category by name
+  Object.values(testsByCategory).forEach(catTests => {
+    catTests.sort((a, b) => a.test_name.localeCompare(b.test_name));
+  });
+
+  // Define category order (most important first)
+  const categoryOrder = ["cpu", "memory", "disk", "compression", "cryptography", "other"];
+  const sortedCategories = Object.keys(testsByCategory).sort((a, b) => {
+    const aIdx = categoryOrder.indexOf(a);
+    const bIdx = categoryOrder.indexOf(b);
+    if (aIdx === -1 && bIdx === -1) return a.localeCompare(b);
+    if (aIdx === -1) return 1;
+    if (bIdx === -1) return -1;
+    return aIdx - bIdx;
+  });
 
   const goHome = () => {
     setView("list");
@@ -161,10 +177,10 @@ function App() {
           {tests.length > 0 && (
             <div className="test-nav">
               <span className="test-nav-label">Results by test:</span>
-              {Object.entries(testsByCategory).map(([category, catTests]) => (
+              {sortedCategories.map((category) => (
                 <span key={category} className="test-nav-group">
                   <span className="test-nav-category">{category}:</span>
-                  {catTests.map((test) => (
+                  {testsByCategory[category].map((test) => (
                     <span
                       key={test.test_name}
                       className="test-nav-link"

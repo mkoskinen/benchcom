@@ -234,6 +234,7 @@ async def list_benchmarks(
             br.architecture,
             br.cpu_model,
             br.cpu_cores,
+            br.total_memory_mb,
             br.submitted_at,
             br.is_anonymous,
             br.benchmark_version,
@@ -325,7 +326,19 @@ async def get_benchmark(benchmark_id: int):
             else run_dict["dmi_info"]
         )
 
-    run_dict["results"] = [dict(r) for r in results]
+    # Parse metrics JSON for each result
+    parsed_results = []
+    for r in results:
+        r_dict = dict(r)
+        if r_dict.get("metrics"):
+            r_dict["metrics"] = (
+                json.loads(r_dict["metrics"])
+                if isinstance(r_dict["metrics"], str)
+                else r_dict["metrics"]
+            )
+        parsed_results.append(r_dict)
+
+    run_dict["results"] = parsed_results
     return run_dict
 
 

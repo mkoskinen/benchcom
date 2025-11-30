@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Benchmark } from "../types";
 
-type SortField = "hostname" | "architecture" | "cpu_model" | "cpu_cores" | "result_count" | "submitted_at";
+type SortField = "hostname" | "architecture" | "cpu_model" | "cpu_cores" | "total_memory_mb" | "result_count" | "submitted_at";
 type SortDirection = "asc" | "desc";
 
 interface BenchmarkListProps {
@@ -109,6 +109,9 @@ function BenchmarkList({
           <th className="sortable" onClick={() => handleSort("cpu_cores")}>
             Cores{getSortIndicator("cpu_cores")}
           </th>
+          <th className="sortable" onClick={() => handleSort("total_memory_mb")}>
+            RAM{getSortIndicator("total_memory_mb")}
+          </th>
           <th className="sortable" onClick={() => handleSort("result_count")}>
             Tests{getSortIndicator("result_count")}
           </th>
@@ -143,6 +146,11 @@ function BenchmarkList({
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 {benchmark.cpu_cores || "—"}
+              </td>
+              <td className="clickable" onClick={() => onSelect(benchmark.id)}>
+                {benchmark.total_memory_mb
+                  ? Math.round(benchmark.total_memory_mb / 1024) + " GB"
+                  : "—"}
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 {benchmark.result_count}

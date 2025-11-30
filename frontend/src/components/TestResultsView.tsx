@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 type SortField = "cpu_model" | "hostname" | "architecture" | "value" | "submitted_at";
 type SortDirection = "asc" | "desc";
+type ViewMode = "table" | "chart";
 
 interface TestResultsViewProps {
   testName: string;
@@ -20,6 +21,7 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
   const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
   const [sortField, setSortField] = useState<SortField>("value");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [viewMode, setViewMode] = useState<ViewMode>("chart");
 
   useEffect(() => {
     fetchResults();
@@ -79,7 +81,9 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
   };
 
   const unit = results.length > 0 ? results[0].unit : null;
-  const isLowerBetter = unit?.toLowerCase().includes("second");
+  const isLowerBetter = useMemo(() => {
+    return unit?.toLowerCase()?.includes("second") ?? false;
+  }, [unit]);
 
   const sortedResults = useMemo(() => {
     return [...results].sort((a, b) => {
@@ -113,6 +117,25 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     return isLowerBetter ? Math.min(...values) : Math.max(...values);
   }, [results, isLowerBetter]);
 
+  // For chart: sort by value (best first)
+  const chartResults = useMemo(() => {
+    return [...results]
+      .filter(r => r.value !== null)
+      .sort((a, b) => {
+        if (a.value === null) return 1;
+        if (b.value === null) return -1;
+        return isLowerBetter ? a.value - b.value : b.value - a.value;
+      })
+      .slice(0, 15); // Show top 15
+  }, [results, isLowerBetter]);
+
+  // Calculate max value for bar width scaling
+  const maxValue = useMemo(() => {
+    if (chartResults.length === 0) return 0;
+    const values = chartResults.map(r => r.value).filter((v): v is number => v !== null);
+    return Math.max(...values);
+  }, [chartResults]);
+
   const getPercentage = (value: number | null) => {
     if (value === null || bestValue === null || bestValue === 0) return null;
     if (value === bestValue) return null; // Best result, no percentage
@@ -128,6 +151,18 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
     }
   };
 
+  const getBarWidth = (value: number | null) => {
+    if (value === null || maxValue === 0) return 0;
+    if (isLowerBetter) {
+      // For time: invert so fastest (lowest) gets longest bar
+      const minValue = chartResults[0]?.value ?? 0;
+      if (minValue === 0) return 100;
+      return (minValue / value) * 100;
+    }
+    return (value / maxValue) * 100;
+  };
+
+  // Early returns AFTER all hooks
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -157,6 +192,21 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
         </span>
       </h2>
 
+      <div className="view-toggle">
+        <button
+          className={viewMode === "chart" ? "active" : ""}
+          onClick={() => setViewMode("chart")}
+        >
+          Chart
+        </button>
+        <button
+          className={viewMode === "table" ? "active" : ""}
+          onClick={() => setViewMode("table")}
+        >
+          Table
+        </button>
+      </div>
+
       {selectedForCompare.length > 0 && (
         <div className="compare-bar">
           <span>{selectedForCompare.length} selected for comparison</span>
@@ -170,56 +220,84 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
         </div>
       )}
 
-      <table className="results-table">
-        <thead>
-          <tr>
-            <th className="checkbox-col">Compare</th>
-            <th className="sortable" onClick={() => handleSort("cpu_model")}>
-              CPU{getSortIndicator("cpu_model")}
-            </th>
-            <th className="sortable" onClick={() => handleSort("hostname")}>
-              Host{getSortIndicator("hostname")}
-            </th>
-            <th className="sortable" onClick={() => handleSort("architecture")}>
-              Arch{getSortIndicator("architecture")}
-            </th>
-            <th className="value-col sortable" onClick={() => handleSort("value")}>
-              Result{getSortIndicator("value")}
-            </th>
-            <th className="pct-col">vs Best</th>
-            <th>Unit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedResults.map((result) => {
-            const isSelected = selectedForCompare.includes(result.run_id);
+      {viewMode === "chart" ? (
+        <div className="bar-chart">
+          {chartResults.map((result, idx) => {
             const pct = getPercentage(result.value);
             const isBest = result.value === bestValue;
             return (
-              <tr
-                key={result.id}
-                className={`${isBest ? "best-row" : ""} ${isSelected ? "selected" : ""}`}
-              >
-                <td className="checkbox-col">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleToggleCompare(result.run_id)}
+              <div key={result.id} className={`bar-row ${isBest ? "best" : ""}`}>
+                <div className="bar-rank">{idx + 1}</div>
+                <div className="bar-label">
+                  <span className="bar-hostname">{result.hostname}</span>
+                  <span className="bar-cpu">{result.cpu_model || result.architecture}</span>
+                </div>
+                <div className="bar-container">
+                  <div
+                    className="bar-fill"
+                    style={{ width: `${getBarWidth(result.value)}%` }}
                   />
-                </td>
-                <td>{result.cpu_model || "—"}</td>
-                <td>{result.hostname}</td>
-                <td>{result.architecture}</td>
-                <td className={`value-col ${isBest ? "best" : ""}`}>
-                  {formatValue(result.value)}
-                </td>
-                <td className={`pct-col ${pct ? "slower" : ""}`}>{pct || "—"}</td>
-                <td className="unit-col">{unit || ""}</td>
-              </tr>
+                  <span className="bar-value">
+                    {formatValue(result.value)} {unit}
+                    {pct && <span className="bar-pct"> ({pct})</span>}
+                  </span>
+                </div>
+              </div>
             );
           })}
-        </tbody>
-      </table>
+        </div>
+      ) : (
+        <table className="results-table">
+          <thead>
+            <tr>
+              <th className="checkbox-col">Compare</th>
+              <th className="sortable" onClick={() => handleSort("cpu_model")}>
+                CPU{getSortIndicator("cpu_model")}
+              </th>
+              <th className="sortable" onClick={() => handleSort("hostname")}>
+                Host{getSortIndicator("hostname")}
+              </th>
+              <th className="sortable" onClick={() => handleSort("architecture")}>
+                Arch{getSortIndicator("architecture")}
+              </th>
+              <th className="value-col sortable" onClick={() => handleSort("value")}>
+                Result{getSortIndicator("value")}
+              </th>
+              <th className="pct-col">vs Best</th>
+              <th>Unit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedResults.map((result) => {
+              const isSelected = selectedForCompare.includes(result.run_id);
+              const pct = getPercentage(result.value);
+              const isBest = result.value === bestValue;
+              return (
+                <tr
+                  key={result.id}
+                  className={`${isBest ? "best-row" : ""} ${isSelected ? "selected" : ""}`}
+                >
+                  <td className="checkbox-col">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleCompare(result.run_id)}
+                    />
+                  </td>
+                  <td>{result.cpu_model || "—"}</td>
+                  <td>{result.hostname}</td>
+                  <td>{result.architecture}</td>
+                  <td className={`value-col ${isBest ? "best" : ""}`}>
+                    {formatValue(result.value)}
+                  </td>
+                  <td className={`pct-col ${pct ? "slower" : ""}`}>{pct || "—"}</td>
+                  <td className="unit-col">{unit || ""}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

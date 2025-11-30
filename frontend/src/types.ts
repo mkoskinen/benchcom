@@ -4,6 +4,7 @@ export interface Benchmark {
   architecture: string;
   cpu_model: string | null;
   cpu_cores: number | null;
+  total_memory_mb: number | null;
   submitted_at: string;
   is_anonymous: boolean;
   benchmark_version: string;

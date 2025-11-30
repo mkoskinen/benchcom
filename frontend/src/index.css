@@ -429,3 +429,131 @@ button:hover {
 .compare-table .value-col.best .pct-diff {
   color: #ccc;
 }
+
+/* View toggle */
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.view-toggle button {
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+}
+
+.view-toggle button.active {
+  background: #000;
+  color: #fff;
+}
+
+.view-toggle button:hover {
+  background: #e0e0e0;
+  color: #000;
+}
+
+.view-toggle button.active:hover {
+  background: #333;
+  color: #fff;
+}
+
+/* Bar chart */
+.bar-chart {
+  border: 1px solid #000;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.bar-row:last-child {
+  border-bottom: none;
+}
+
+.bar-row.best {
+  background: #f8f8f8;
+}
+
+.bar-rank {
+  width: 24px;
+  font-weight: 600;
+  text-align: center;
+  color: #666;
+}
+
+.bar-row.best .bar-rank {
+  color: #000;
+}
+
+.bar-label {
+  width: 200px;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.bar-hostname {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-cpu {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-container {
+  flex: 1;
+  position: relative;
+  height: 24px;
+  background: #f0f0f0;
+}
+
+.bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #000;
+  transition: width 0.3s ease;
+}
+
+.bar-row.best .bar-fill {
+  background: #000;
+}
+
+.bar-value {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+  white-space: nowrap;
+}
+
+.bar-row .bar-container .bar-value {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+.bar-pct {
+  font-weight: 400;
+  color: #666;
+}

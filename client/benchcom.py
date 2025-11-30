@@ -639,17 +639,37 @@ class BenchmarkRunner:
                 info["total_memory_mb"] = 0
         else:
             # Linux: use /proc/cpuinfo
+            cpu_model = None
+            hardware = None
             try:
                 with open("/proc/cpuinfo", "r") as f:
                     for line in f:
                         if line.startswith("model name"):
-                            info["cpu_model"] = line.split(":", 1)[1].strip()
+                            cpu_model = line.split(":", 1)[1].strip()
                             break
+                        elif line.startswith("Model"):
+                            # ARM: "Model" field (e.g., "Raspberry Pi 4 Model B Rev 1.4")
+                            cpu_model = line.split(":", 1)[1].strip()
                         elif line.startswith("Hardware"):
-                            info["cpu_model"] = line.split(":", 1)[1].strip()
-                            break
+                            # ARM: Hardware field (e.g., "BCM2835")
+                            hardware = line.split(":", 1)[1].strip()
             except (IOError, OSError):
-                info["cpu_model"] = "unknown"
+                pass
+
+            # Use model name, or fall back to Hardware, or device-tree model
+            if cpu_model:
+                info["cpu_model"] = cpu_model
+            elif hardware:
+                info["cpu_model"] = hardware
+            else:
+                # Try device-tree model (works for Raspberry Pi and other ARM boards)
+                try:
+                    with open("/proc/device-tree/model", "r") as f:
+                        model = f.read().strip().rstrip('\x00')
+                        if model:
+                            info["cpu_model"] = model
+                except (IOError, OSError):
+                    info["cpu_model"] = "unknown"
 
             # Linux memory
             try:
@@ -826,11 +846,6 @@ class BenchmarkRunner:
 
     def run_all(self):
         """Run all benchmarks"""
-        # Print logo
-        for line in LOGO.strip().split('\n'):
-            self.log(line)
-        self.log("")
-        self.log(f"v{BENCHCOM_VERSION} - Universal Benchmark Suite")
         if self.fast:
             self.log("(FAST MODE)")
         self.log(f"Hostname: {self.hostname}")
@@ -901,6 +916,11 @@ class BenchmarkRunner:
 
 
 def main():
+    # Print logo immediately at startup
+    print(LOGO)
+    print(f"v{BENCHCOM_VERSION} - Universal Benchmark Suite")
+    print("")
+
     parser = argparse.ArgumentParser(description=f"BENCHCOM v{BENCHCOM_VERSION} - Universal Linux Benchmark")
     parser.add_argument("--api-url", help="API URL to submit results to")
     parser.add_argument("--api-token", help="API authentication token")

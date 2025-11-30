@@ -501,5 +501,215 @@ class TestEdgeCases:
         assert response.status_code == 200
 
 
+class TestMetricsJsonParsing:
+    """Tests for metrics JSONB parsing in detail endpoint (regression tests)"""
+
+    def test_metrics_returned_as_dict_not_string(self, client):
+        """Test that metrics JSONB is returned as dict, not JSON string
+
+        Regression test: Previously metrics were returned as a JSON string
+        which caused Pydantic validation to fail with 'Input should be a valid dictionary'
+        """
+        # Submit benchmark with metrics (like PassMark CPU details)
+        data = {
+            "hostname": "test-metrics-parsing",
+            "architecture": "aarch64",
+            "cpu_model": "Raspberry Pi 4",
+            "cpu_cores": 4,
+            "results": [
+                {
+                    "test_name": "passmark_cpu_single",
+                    "test_category": "cpu",
+                    "value": 483.67,
+                    "unit": "points",
+                    "metrics": {
+                        "sse": 780.69,
+                        "prime": 3.56,
+                        "physics": 81.76,
+                        "sorting": 3518.07,
+                        "encryption": 78.18,
+                        "float_math": 4499.44,
+                        "compression": 8549.33,
+                        "integer_math": 11689.62,
+                        "single_thread": 483.67,
+                    },
+                }
+            ],
+        }
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        # Get detail - this should NOT fail with validation error
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200, f"Detail endpoint failed: {response.text}"
+
+        detail = response.json()
+        assert "results" in detail
+
+        # Find the result with metrics
+        result_with_metrics = None
+        for r in detail["results"]:
+            if r.get("metrics"):
+                result_with_metrics = r
+                break
+
+        assert result_with_metrics is not None, "Result with metrics not found"
+
+        # Verify metrics is a dict, not a string
+        metrics = result_with_metrics["metrics"]
+        assert isinstance(metrics, dict), f"metrics should be dict, got {type(metrics)}"
+        assert "single_thread" in metrics
+        assert metrics["single_thread"] == 483.67
+
+    def test_multiple_results_with_and_without_metrics(self, client):
+        """Test benchmark with mix of results - some with metrics, some without"""
+        data = {
+            "hostname": "test-mixed-metrics",
+            "architecture": "x86_64",
+            "results": [
+                {
+                    "test_name": "passmark_cpu",
+                    "test_category": "cpu",
+                    "value": 25000.0,
+                    "unit": "points",
+                    "metrics": None,  # No detailed metrics
+                },
+                {
+                    "test_name": "passmark_cpu_single",
+                    "test_category": "cpu",
+                    "value": 3500.0,
+                    "unit": "points",
+                    "metrics": {
+                        "integer_math": 50000,
+                        "float_math": 40000,
+                    },
+                },
+                {
+                    "test_name": "openssl_sha256",
+                    "test_category": "cryptography",
+                    "value": 1500000.0,
+                    "unit": "KB/s",
+                    # No metrics field at all
+                },
+            ],
+        }
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        # Get detail
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200
+
+        detail = response.json()
+        assert len(detail["results"]) == 3
+
+        # Verify each result type
+        for r in detail["results"]:
+            if r["test_name"] == "passmark_cpu":
+                assert r["metrics"] is None
+            elif r["test_name"] == "passmark_cpu_single":
+                assert isinstance(r["metrics"], dict)
+                assert r["metrics"]["integer_math"] == 50000
+            elif r["test_name"] == "openssl_sha256":
+                assert r.get("metrics") is None
+
+
+class TestRaspberryPiSupport:
+    """Tests for Raspberry Pi and ARM board support"""
+
+    def test_raspberry_pi_with_device_tree_model(self, client):
+        """Test Raspberry Pi submission with device-tree model info"""
+        data = {
+            "hostname": "raspberrypi",
+            "architecture": "aarch64",
+            "cpu_model": "Raspberry Pi 4 Model B Rev 1.4",  # From /proc/device-tree/model
+            "cpu_cores": 4,
+            "total_memory_mb": 7820,
+            "kernel_version": "6.12.47+rpt-rpi-v8",
+            "dmi_info": {
+                "product": "Raspberry Pi 4 Model B Rev 1.4",
+            },
+            "results": [
+                {
+                    "test_name": "passmark_cpu",
+                    "test_category": "cpu",
+                    "value": 624.05,
+                    "unit": "points",
+                }
+            ],
+        }
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        # Verify in list
+        response = client.get(f"{API_PREFIX}/benchmarks?hostname=raspberrypi")
+        assert response.status_code == 200
+        items = response.json()
+        assert len(items) > 0
+        pi = items[0]
+        assert pi["cpu_model"] == "Raspberry Pi 4 Model B Rev 1.4"
+        assert pi["architecture"] == "aarch64"
+
+        # Verify in detail
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200
+        detail = response.json()
+        assert detail["cpu_model"] == "Raspberry Pi 4 Model B Rev 1.4"
+        assert detail["dmi_info"]["product"] == "Raspberry Pi 4 Model B Rev 1.4"
+
+    def test_arm_board_without_cpu_model(self, client):
+        """Test ARM board where CPU model detection fails"""
+        data = {
+            "hostname": "unknown-arm-board",
+            "architecture": "aarch64",
+            "cpu_model": None,  # CPU model detection failed
+            "cpu_cores": 4,
+            "dmi_info": {
+                "product": "Some ARM SBC",
+            },
+            "results": [
+                {
+                    "test_name": "openssl_sha256",
+                    "test_category": "cryptography",
+                    "value": 50000.0,
+                    "unit": "KB/s",
+                }
+            ],
+        }
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+        benchmark_id = response.json()["id"]
+
+        # Should still be retrievable
+        response = client.get(f"{API_PREFIX}/benchmarks/{benchmark_id}")
+        assert response.status_code == 200
+        detail = response.json()
+        assert detail["cpu_model"] is None
+        assert detail["dmi_info"]["product"] == "Some ARM SBC"
+
+    def test_total_memory_in_list_response(self, client):
+        """Test that total_memory_mb is included in list response"""
+        data = {
+            "hostname": "test-memory-list",
+            "architecture": "aarch64",
+            "total_memory_mb": 8192,
+            "results": [
+                {"test_name": "test", "test_category": "test", "value": 1.0, "unit": "x"}
+            ],
+        }
+        response = client.post(f"{API_PREFIX}/benchmarks", json=data)
+        assert response.status_code == 200
+
+        response = client.get(f"{API_PREFIX}/benchmarks?hostname=test-memory-list")
+        assert response.status_code == 200
+        items = response.json()
+        assert len(items) > 0
+        assert "total_memory_mb" in items[0]
+        assert items[0]["total_memory_mb"] == 8192
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

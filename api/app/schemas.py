@@ -66,6 +66,7 @@ class BenchmarkRunResponse(BaseModel):
     architecture: str
     cpu_model: Optional[str]
     cpu_cores: Optional[int]
+    total_memory_mb: Optional[int]
     submitted_at: datetime
     is_anonymous: bool
     benchmark_version: str
