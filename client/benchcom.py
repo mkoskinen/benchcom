@@ -542,29 +542,79 @@ class BenchmarkRunner:
                 self.add_result("passmark_memory", "memory", mem_mark, "points", results_yaml)
                 self.log(f"  Memory Mark: {mem_mark:.0f}")
 
-            # Individual CPU tests (store as metrics)
-            cpu_tests = {
-                "integer_math": extract_value("CPU_INTEGER_MATH"),
-                "float_math": extract_value("CPU_FLOATINGPOINT_MATH"),
-                "prime": extract_value("CPU_PRIME"),
-                "sorting": extract_value("CPU_SORTING"),
-                "encryption": extract_value("CPU_ENCRYPTION"),
-                "compression": extract_value("CPU_COMPRESSION"),
-                "single_thread": extract_value("CPU_SINGLETHREAD"),
-                "physics": extract_value("CPU_PHYSICS"),
-                "sse": extract_value("CPU_MATRIX_MULT_SSE"),
-            }
-            # Filter out None/zero values
-            cpu_tests = {k: v for k, v in cpu_tests.items() if v}
+            # Disk Mark
+            disk_mark = extract_value("SUMM_DISK")
+            if disk_mark and disk_mark > 0:
+                self.add_result("passmark_disk", "disk", disk_mark, "points", results_yaml)
+                self.log(f"  Disk Mark: {disk_mark:.0f}")
 
-            if cpu_tests:
-                # Store single-thread score separately as it's useful for comparison
-                st_score = cpu_tests.get("single_thread")
-                if st_score:
-                    self.add_result(
-                        "passmark_cpu_single", "cpu", st_score, "points",
-                        results_yaml, metrics=cpu_tests
-                    )
+            # Individual CPU tests
+            cpu_single = extract_value("CPU_SINGLETHREAD")
+            if cpu_single and cpu_single > 0:
+                self.add_result("passmark_cpu_single", "cpu", cpu_single, "points", results_yaml)
+                self.log(f"  CPU Single Thread: {cpu_single:.0f}")
+
+            cpu_integer = extract_value("CPU_INTEGER_MATH")
+            if cpu_integer and cpu_integer > 0:
+                self.add_result("passmark_integer", "cpu", cpu_integer, "points", results_yaml)
+
+            cpu_float = extract_value("CPU_FLOATINGPOINT_MATH")
+            if cpu_float and cpu_float > 0:
+                self.add_result("passmark_float", "cpu", cpu_float, "points", results_yaml)
+
+            cpu_prime = extract_value("CPU_PRIME")
+            if cpu_prime and cpu_prime > 0:
+                self.add_result("passmark_prime", "cpu", cpu_prime, "points", results_yaml)
+
+            cpu_encryption = extract_value("CPU_ENCRYPTION")
+            if cpu_encryption and cpu_encryption > 0:
+                self.add_result("passmark_encryption", "cryptography", cpu_encryption, "points", results_yaml)
+
+            cpu_compression = extract_value("CPU_COMPRESSION")
+            if cpu_compression and cpu_compression > 0:
+                self.add_result("passmark_compression", "compression", cpu_compression, "points", results_yaml)
+
+            cpu_physics = extract_value("CPU_PHYSICS")
+            if cpu_physics and cpu_physics > 0:
+                self.add_result("passmark_physics", "cpu", cpu_physics, "points", results_yaml)
+
+            cpu_sse = extract_value("CPU_MATRIX_MULT_SSE")
+            if cpu_sse and cpu_sse > 0:
+                self.add_result("passmark_sse", "cpu", cpu_sse, "points", results_yaml)
+
+            # Memory detail tests
+            mem_read_cached = extract_value("ME_READ_CACHED")
+            if mem_read_cached and mem_read_cached > 0:
+                self.add_result("passmark_mem_read_cached", "memory", mem_read_cached, "MB/s", results_yaml)
+
+            mem_read_uncached = extract_value("ME_READ_UNCACHED")
+            if mem_read_uncached and mem_read_uncached > 0:
+                self.add_result("passmark_mem_read_uncached", "memory", mem_read_uncached, "MB/s", results_yaml)
+
+            mem_write = extract_value("ME_WRITE")
+            if mem_write and mem_write > 0:
+                self.add_result("passmark_mem_write", "memory", mem_write, "MB/s", results_yaml)
+
+            mem_latency = extract_value("ME_LATENCY")
+            if mem_latency and mem_latency > 0:
+                self.add_result("passmark_mem_latency", "memory", mem_latency, "ns", results_yaml)
+
+            mem_threaded = extract_value("ME_THREADED")
+            if mem_threaded and mem_threaded > 0:
+                self.add_result("passmark_mem_threaded", "memory", mem_threaded, "MB/s", results_yaml)
+
+            # Disk detail tests
+            disk_seq_read = extract_value("DISK_SEQ_READ")
+            if disk_seq_read and disk_seq_read > 0:
+                self.add_result("passmark_disk_seq_read", "disk", disk_seq_read, "MB/s", results_yaml)
+
+            disk_seq_write = extract_value("DISK_SEQ_WRITE")
+            if disk_seq_write and disk_seq_write > 0:
+                self.add_result("passmark_disk_seq_write", "disk", disk_seq_write, "MB/s", results_yaml)
+
+            disk_random_read = extract_value("DISK_RANDOM_SEEK_RW")
+            if disk_random_read and disk_random_read > 0:
+                self.add_result("passmark_disk_random", "disk", disk_random_read, "ops/s", results_yaml)
 
             self.log("PassMark complete")
         else:
