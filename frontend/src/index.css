@@ -1084,3 +1084,125 @@ button:hover {
   color: #000;
   text-decoration: underline;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .logo {
+    font-size: 6px;
+    line-height: 1.1;
+    overflow-x: auto;
+  }
+
+  .header {
+    position: relative;
+    padding-bottom: 8px;
+  }
+
+  .auth-section {
+    position: static;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+
+  .github-link {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .curl-command {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .curl-code {
+    font-size: 9px;
+    word-break: break-all;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .run-options .curl-code {
+    font-size: 8px;
+  }
+
+  .test-nav {
+    font-size: 11px;
+    line-height: 1.8;
+  }
+
+  .test-nav-label {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .leaderboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .leaderboard-tabs {
+    flex-wrap: wrap;
+  }
+
+  .leaderboard-item {
+    font-size: 11px;
+    gap: 8px;
+  }
+
+  .leaderboard-name {
+    max-width: 120px;
+  }
+
+  .leaderboard-value {
+    min-width: 80px;
+    font-size: 11px;
+  }
+
+  .benchmark-table th,
+  .benchmark-table td {
+    padding: 6px 4px;
+    font-size: 11px;
+  }
+
+  .benchmark-table .checkbox-col {
+    width: 40px;
+  }
+
+  .info-table th,
+  .info-table td {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .results-table th,
+  .results-table td {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .bar-label {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  .bar-hostname {
+    font-size: 11px;
+  }
+
+  .bar-cpu {
+    font-size: 10px;
+  }
+
+  .compare-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

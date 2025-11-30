@@ -86,8 +86,9 @@ function BenchmarkCompare({ benchmarkIds, onBack }: BenchmarkCompareProps) {
 
     if (values.length === 0) return null;
 
-    // Lower is better for seconds, higher is better for everything else
-    const isLowerBetter = unit?.toLowerCase().includes("second");
+    // Lower is better for seconds/nanoseconds (latency), higher is better for everything else
+    const u = unit?.toLowerCase() ?? "";
+    const isLowerBetter = u.includes("second") || u === "ns";
 
     return values.reduce((best, curr) => {
       if (best.value === null) return curr;

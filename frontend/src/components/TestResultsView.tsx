@@ -112,7 +112,9 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
 
   const unit = results.length > 0 ? results[0].unit : null;
   const isLowerBetter = useMemo(() => {
-    return unit?.toLowerCase()?.includes("second") ?? false;
+    const u = unit?.toLowerCase() ?? "";
+    // Lower is better for: seconds, nanoseconds (latency)
+    return u.includes("second") || u === "ns";
   }, [unit]);
 
   // Extract unique values for filters

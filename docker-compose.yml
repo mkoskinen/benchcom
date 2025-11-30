@@ -61,6 +61,8 @@ services:
       context: ./api
       dockerfile: Dockerfile
     container_name: benchcom-api
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: benchcom
       POSTGRES_PASSWORD: benchcom
@@ -68,8 +70,6 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       AUTH_MODE: both
-      SECRET_KEY: change-this-in-production
-      ANONYMOUS_ADMIN: "true"
     ports:
       - "8000:8000"
     depends_on:

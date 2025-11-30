@@ -110,10 +110,30 @@ async def get_current_user_optional(
 
 
 async def require_auth_if_needed(user=Depends(get_current_user_optional)):
-    """Check authentication based on AUTH_MODE setting"""
+    """Check authentication based on AUTH_MODE setting (deprecated, use specific functions)"""
     if settings.AUTH_MODE == "authenticated" and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
+        )
+    return user
+
+
+async def require_auth_for_submission(user=Depends(get_current_user_optional)):
+    """Check if authentication is required for submissions"""
+    if not settings.ALLOW_ANONYMOUS_SUBMISSIONS and user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required for submissions",
+        )
+    return user
+
+
+async def require_auth_for_browsing(user=Depends(get_current_user_optional)):
+    """Check if authentication is required for browsing/reading data"""
+    if not settings.ALLOW_ANONYMOUS_BROWSING and user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to view data",
         )
     return user

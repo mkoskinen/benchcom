@@ -1,6 +1,7 @@
 import secrets
 from pydantic_settings import BaseSettings
-from typing import Literal, List
+from pydantic import field_validator
+from typing import Literal, List, Union
 
 
 class Settings(BaseSettings):
@@ -18,7 +19,14 @@ class Settings(BaseSettings):
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # Authentication modes: "anonymous", "authenticated", "both"
+    # (deprecated, use ALLOW_ANONYMOUS_SUBMISSIONS and ALLOW_ANONYMOUS_BROWSING instead)
     AUTH_MODE: Literal["anonymous", "authenticated", "both"] = "both"
+
+    # Allow submissions without authentication
+    ALLOW_ANONYMOUS_SUBMISSIONS: bool = True
+
+    # Allow browsing/reading data without authentication
+    ALLOW_ANONYMOUS_BROWSING: bool = True
 
     # Whether anonymous users have admin privileges (for development/private instances)
     ANONYMOUS_ADMIN: bool = False
@@ -42,8 +50,19 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "BENCHCOM API"
 
-    # CORS - can be overridden via environment
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS - override via CORS_ORIGINS env var (comma-separated, e.g. "http://localhost:3000,http://192.168.1.15:3000")
+    # For development/private instances, set CORS_ORIGINS=* to allow all origins
+    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://localhost:5173"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS_ORIGINS from comma-separated string or list"""
+        if isinstance(v, str):
+            if v == "*":
+                return ["*"]
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     class Config:
         env_file = ".env"

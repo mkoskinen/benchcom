@@ -50,7 +50,9 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
   const unit = stats.length > 0 ? stats[0].unit : null;
   const description = getTestDescription(testName);
   const isLowerBetter = useMemo(() => {
-    return unit?.toLowerCase()?.includes("second") ?? false;
+    const u = unit?.toLowerCase() ?? "";
+    // Lower is better for: seconds, nanoseconds (latency)
+    return u.includes("second") || u === "ns";
   }, [unit]);
 
   const bestValue = useMemo(() => {

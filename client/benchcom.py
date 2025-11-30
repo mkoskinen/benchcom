@@ -477,7 +477,18 @@ class BenchmarkRunner:
                 "pt_mac",
             ]
         else:
+            # Determine architecture-specific binary name
+            arch = platform.machine()
+            if arch == "aarch64":
+                arch_binary = "PerformanceTest_Linux_ARM64"
+            elif arch in ("armv7l", "armhf"):
+                arch_binary = "PerformanceTest_Linux_ARM32"
+            else:
+                arch_binary = "PerformanceTest_Linux_x86-64"
+
             pt_paths = [
+                f"/opt/passmark/PerformanceTest/{arch_binary}",
+                f"/opt/passmark/{arch_binary}",
                 "/opt/passmark/pt_linux/pt_linux",
                 "/opt/passmark/PerformanceTest/PerformanceTest_Linux_x86-64",
                 "/opt/passmark/PerformanceTest/PerformanceTest_Linux_ARM64",
@@ -639,8 +650,17 @@ class BenchmarkRunner:
 
             self.log("PassMark complete")
         else:
-            self.log(f"PassMark: no results file found (return code: {ret})")
+            if ret == 127:
+                self.log(f"PassMark: binary not executable or missing dependencies")
+                self.log(f"  Binary path: {pt_cmd}")
+                self.log(f"  Try running: ldd {pt_cmd}")
+            else:
+                self.log(f"PassMark: no results file found (return code: {ret})")
             if output:
+                # Log first few lines of output for debugging
+                output_lines = output.strip().split('\n')[:10]
+                for line in output_lines:
+                    self.log(f"  {line}")
                 with open(self.output_dir / "passmark_output.txt", "w") as f:
                     f.write(output)
 

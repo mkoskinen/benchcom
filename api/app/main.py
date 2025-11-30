@@ -24,6 +24,8 @@ from .auth import (
     get_current_user,
     get_current_user_optional,
     require_auth_if_needed,
+    require_auth_for_submission,
+    require_auth_for_browsing,
 )
 
 # Configure logging
@@ -86,7 +88,8 @@ async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "auth_mode": settings.AUTH_MODE,
+        "allow_anonymous_submissions": settings.ALLOW_ANONYMOUS_SUBMISSIONS,
+        "allow_anonymous_browsing": settings.ALLOW_ANONYMOUS_BROWSING,
         "anonymous_admin": settings.ANONYMOUS_ADMIN,
     }
 
@@ -147,7 +150,7 @@ async def get_me(current_user=Depends(get_current_user)):
 async def submit_benchmark(
     request: Request,
     benchmark: BenchmarkRunCreate,
-    current_user=Depends(require_auth_if_needed),
+    current_user=Depends(require_auth_for_submission),
 ):
     """Submit a new benchmark run"""
     # Insert benchmark run
@@ -251,6 +254,7 @@ async def list_benchmarks(
     offset: int = 0,
     architecture: Optional[str] = None,
     hostname: Optional[str] = None,
+    _auth=Depends(require_auth_for_browsing),
 ):
     """List benchmark runs"""
     limit = min(limit, MAX_LIMIT)  # Enforce max limit
@@ -309,7 +313,7 @@ async def list_benchmarks(
 )
 async def get_benchmark(
     benchmark_id: int,
-    current_user=Depends(get_current_user_optional),
+    current_user=Depends(require_auth_for_browsing),
 ):
     """Get detailed benchmark run"""
     # Get run details (including sensitive fields)
@@ -393,6 +397,7 @@ async def get_results_by_test(
     test_name: Optional[str] = None,
     test_category: Optional[str] = None,
     limit: int = 50,
+    _auth=Depends(require_auth_for_browsing),
 ):
     """Get results grouped by test, sorted by best value first"""
     limit = min(limit, MAX_LIMIT)  # Enforce max limit
@@ -448,7 +453,7 @@ async def get_results_by_test(
 
 
 @app.get(f"{settings.API_V1_PREFIX}/tests")
-async def get_available_tests():
+async def get_available_tests(_auth=Depends(require_auth_for_browsing)):
     """Get list of available test names and categories"""
     query = """
         SELECT DISTINCT
@@ -570,6 +575,7 @@ async def get_stats_by_test(
     group_by: str = "cpu",  # cpu, system, architecture
     architecture: Optional[str] = None,
     limit: int = 50,
+    _auth=Depends(require_auth_for_browsing),
 ):
     """
     Get aggregated statistics for a test, grouped by CPU, system, or architecture.
@@ -632,6 +638,7 @@ async def get_stats_by_test(
 async def get_stats_by_cpu(
     cpu_model: str,
     architecture: Optional[str] = None,
+    _auth=Depends(require_auth_for_browsing),
 ):
     """Get all test statistics for a specific CPU model"""
     where_clauses = ["cpu_model = $1"]
@@ -670,7 +677,7 @@ async def get_stats_by_cpu(
 
 
 @app.get(f"{settings.API_V1_PREFIX}/stats/available-cpus")
-async def get_available_cpus():
+async def get_available_cpus(_auth=Depends(require_auth_for_browsing)):
     """Get list of CPUs with stats available"""
     query = """
         SELECT DISTINCT
@@ -688,7 +695,7 @@ async def get_available_cpus():
 
 
 @app.get(f"{settings.API_V1_PREFIX}/stats/available-systems")
-async def get_available_systems():
+async def get_available_systems(_auth=Depends(require_auth_for_browsing)):
     """Get list of system types with stats available"""
     query = """
         SELECT DISTINCT
