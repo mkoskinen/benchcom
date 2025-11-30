@@ -223,17 +223,17 @@ function App() {
           <code
             className="curl-code"
             onClick={() => copyToClipboard(
-              `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL}`
+              `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- -u ${DISPLAY_URL}`
             )}
             title="Click to copy"
           >
-            curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url {DISPLAY_URL}
+            curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- -u {DISPLAY_URL}
           </code>
           <span
             className="expand-toggle"
             onClick={() => setShowRunOptions(!showRunOptions)}
           >
-            {showRunOptions ? "[-] less" : "[+] more options"}
+            {showRunOptions ? "[-]" : "[+] options"}
           </span>
         </div>
 
@@ -283,7 +283,7 @@ function App() {
               <code
                 className="curl-code"
                 onClick={() => copyToClipboard(
-                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL} --api-username YOUR_USER --api-password YOUR_PASS`
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL} --api-username USER --api-password PASS`
                 )}
                 title="Click to copy"
               >

@@ -1214,7 +1214,7 @@ class BenchmarkRunner:
 
 def main():
     parser = argparse.ArgumentParser(description=f"BENCHCOM v{BENCHCOM_VERSION} - Universal Linux Benchmark")
-    parser.add_argument("--api-url", help="API URL to submit results to")
+    parser.add_argument("-u", "--api-url", help="API URL to submit results to")
     parser.add_argument("--api-token", help="API authentication token (JWT)")
     parser.add_argument("--api-username", help="API username (alternative to --api-token)")
     parser.add_argument("--api-password", help="API password (use with --api-username)")
