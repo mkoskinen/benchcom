@@ -10,8 +10,7 @@ import { Benchmark, TestInfo, BenchmarkStat } from "./types";
 import axios from "axios";
 
 // Derive API URL from current location (frontend:3000 -> api:8000)
-const API_URL = import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 const LOGO = `██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
 ██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║
@@ -39,6 +38,7 @@ function App() {
     { label: "CPU ST (system)", test: "passmark_cpu_single", groupBy: "system" },
     { label: "Memory (system)", test: "passmark_memory", groupBy: "system" },
     { label: "AES256 (CPU)", test: "openssl_aes256", groupBy: "cpu" },
+    { label: "SHA256 (CPU)", test: "openssl_sha256", groupBy: "cpu" },
   ];
   const [selectedBenchmark, setSelectedBenchmark] = useState<number | null>(
     null
