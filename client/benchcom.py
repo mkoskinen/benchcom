@@ -448,37 +448,61 @@ class BenchmarkRunner:
         """Run disk write benchmark"""
         self.log("=== DISK WRITE TEST (1GB) ===")
 
-        test_file = self.output_dir / "test_write"
-        output, _ = self.run_command(
-            [
-                "dd",
-                "if=/dev/zero",
-                f"of={test_file}",
-                "bs=1M",
-                "count=1024",
-                "conv=fdatasync",
-            ]
-        )
+        # Use home directory to avoid tmpfs, fall back to current dir
+        home = Path.home()
+        if home.exists():
+            test_file = home / ".benchcom_disk_test"
+        else:
+            test_file = Path.cwd() / ".benchcom_disk_test"
 
-        if output:
-            with open(self.output_dir / "disk_write.txt", "w") as f:
-                f.write(output)
-            self.log(output)
+        self.log(f"Test file: {test_file}")
 
-            # Extract MB/s or GB/s
-            match = re.search(r"([\d.]+)\s+GB/s", output)
-            if match:
-                speed = float(match.group(1)) * 1024  # Convert to MB/s
-                self.add_result("disk_write", "disk", speed, "MB/s", output)
-            else:
-                match = re.search(r"([\d.]+)\s+MB/s", output)
+        try:
+            output, ret = self.run_command(
+                [
+                    "dd",
+                    "if=/dev/zero",
+                    f"of={test_file}",
+                    "bs=1M",
+                    "count=1024",
+                    "conv=fdatasync",
+                ]
+            )
+
+            if ret != 0 or "No space left" in output:
+                self.log("Skipping: not enough disk space")
+                if test_file.exists():
+                    test_file.unlink()
+                self.log("")
+                return
+
+            if output:
+                try:
+                    with open(self.output_dir / "disk_write.txt", "w") as f:
+                        f.write(output)
+                except OSError:
+                    pass  # Ignore write errors for log file
+                self.log(output)
+
+                # Extract MB/s or GB/s
+                match = re.search(r"([\d.]+)\s+GB/s", output)
                 if match:
-                    speed = float(match.group(1))
+                    speed = float(match.group(1)) * 1024  # Convert to MB/s
                     self.add_result("disk_write", "disk", speed, "MB/s", output)
-
-        # Clean up test file
-        if test_file.exists():
-            test_file.unlink()
+                else:
+                    match = re.search(r"([\d.]+)\s+MB/s", output)
+                    if match:
+                        speed = float(match.group(1))
+                        self.add_result("disk_write", "disk", speed, "MB/s", output)
+        except OSError as e:
+            self.log(f"Skipping: {e}")
+        finally:
+            # Clean up test file
+            if test_file.exists():
+                try:
+                    test_file.unlink()
+                except OSError:
+                    pass
 
         self.log("")
 
