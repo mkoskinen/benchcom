@@ -25,8 +25,9 @@ export interface BenchmarkDetail {
   submitted_at: string;
   is_anonymous: boolean;
   benchmark_version: string;
-  tags: string[] | null;
+  tags: Record<string, any> | null;
   notes: string | null;
+  dmi_info: Record<string, string> | null;
   username: string | null;
   results: BenchmarkResult[];
 }

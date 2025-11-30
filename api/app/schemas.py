@@ -86,7 +86,8 @@ class BenchmarkRunDetail(BaseModel):
     submitted_at: datetime
     is_anonymous: bool
     benchmark_version: str
-    tags: Optional[List[str]]
+    tags: Optional[Dict[str, Any]]
     notes: Optional[str]
+    dmi_info: Optional[Dict[str, str]]
     username: Optional[str]
     results: List[BenchmarkResultResponse]

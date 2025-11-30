@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs clean db-shell api-shell test client-deps lint format check
+.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check
 
 # Default target
 help:
@@ -18,6 +18,12 @@ help:
 	@echo "  Client:"
 	@echo "    make benchmark  - Run benchmark and submit to local API"
 	@echo "    make client-deps - Install Python client dependencies"
+	@echo ""
+	@echo "  Testing:"
+	@echo "    make test       - Run API tests (starts test containers)"
+	@echo "    make test-up    - Start test containers only"
+	@echo "    make test-down  - Stop test containers"
+	@echo "    make dev-deps   - Install development dependencies"
 	@echo ""
 	@echo "  Development:"
 	@echo "    make db-shell   - Connect to PostgreSQL shell"
@@ -71,6 +77,28 @@ benchmark:
 # Install Python client dependencies
 client-deps:
 	pip3 install --user -r client/requirements.txt
+
+# Install development dependencies
+dev-deps:
+	pip3 install --user -r requirements-dev.txt
+
+# Start test containers
+test-up:
+	podman-compose --profile test up -d db-test api-test
+	@echo "Waiting for test services to start..."
+	@sleep 5
+	@cat api/schema.sql | podman exec -i benchcom-db-test psql -U benchcom -d benchcom_test
+	@echo "Test services ready on port 8001"
+
+# Stop test containers
+test-down:
+	podman-compose --profile test down
+
+# Run API tests
+test: test-up
+	@echo "Running API tests..."
+	python -m pytest api/tests/test_api.py -v
+	@$(MAKE) test-down
 
 # Lint all code
 lint:

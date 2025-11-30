@@ -46,6 +46,28 @@ function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
     return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
   };
 
+  const cropHostname = (hostname: string) => {
+    const dotIndex = hostname.indexOf(".");
+    return dotIndex > 0 ? hostname.substring(0, dotIndex) : hostname;
+  };
+
+  const formatDmiInfo = (dmi: Record<string, string> | null) => {
+    if (!dmi) return null;
+    // Show manufacturer + product (most useful DMI fields)
+    const parts = [];
+    if (dmi.manufacturer && dmi.manufacturer !== "Unknown") {
+      parts.push(dmi.manufacturer);
+    }
+    if (dmi.product && dmi.product !== "Unknown") {
+      parts.push(dmi.product);
+    }
+    // For Apple Silicon, also show chip
+    if (dmi.chip) {
+      parts.push(dmi.chip);
+    }
+    return parts.length > 0 ? parts.join(" ") : null;
+  };
+
   const groupResultsByCategory = (results: BenchmarkDetailType["results"]) => {
     const grouped: Record<string, BenchmarkDetailType["results"]> = {};
     results.forEach((result) => {
@@ -87,7 +109,7 @@ function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
           <tr>
             <th>Host</th>
             <td>
-              <strong>{benchmark.hostname}</strong>
+              <strong>{cropHostname(benchmark.hostname)}</strong>
             </td>
             <th>Arch</th>
             <td>{benchmark.architecture}</td>
@@ -110,6 +132,12 @@ function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
             <th>Kernel</th>
             <td colSpan={3}>{benchmark.kernel_version || "—"}</td>
           </tr>
+          {formatDmiInfo(benchmark.dmi_info) && (
+            <tr>
+              <th>System</th>
+              <td colSpan={5}>{formatDmiInfo(benchmark.dmi_info)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
 

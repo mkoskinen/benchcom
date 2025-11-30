@@ -276,6 +276,7 @@ async def get_benchmark(benchmark_id: int):
             br.benchmark_version,
             br.tags,
             br.notes,
+            br.dmi_info,
             u.username
         FROM benchmark_runs br
         LEFT JOIN users u ON br.user_id = u.id
@@ -301,6 +302,13 @@ async def get_benchmark(benchmark_id: int):
             json.loads(run_dict["tags"])
             if isinstance(run_dict["tags"], str)
             else run_dict["tags"]
+        )
+    # Parse dmi_info from JSONB
+    if run_dict.get("dmi_info"):
+        run_dict["dmi_info"] = (
+            json.loads(run_dict["dmi_info"])
+            if isinstance(run_dict["dmi_info"], str)
+            else run_dict["dmi_info"]
         )
 
     run_dict["results"] = [dict(r) for r in results]

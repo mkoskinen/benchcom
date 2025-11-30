@@ -1,7 +1,7 @@
 #!/bin/bash
 # BENCHCOM - Bootstrap installer and runner
 # Usage: curl https://benchcom.example.com/benchcom.sh | bash
-# Or: ./benchcom.sh [--api-url URL] [--api-token TOKEN] [--install-deps]
+# Or: ./benchcom.sh [--api-url URL] [--api-token TOKEN] [--no-install-deps]
 
 set -e
 
@@ -13,11 +13,14 @@ echo "BENCHCOM v${BENCHCOM_VERSION}"
 echo "================================"
 echo ""
 
-# Parse arguments for --install-deps flag
-INSTALL_DEPS=0
+# Parse arguments - install deps by default, --no-install-deps to skip
+INSTALL_DEPS=1
 ARGS=()
 for arg in "$@"; do
-    if [ "$arg" = "--install-deps" ]; then
+    if [ "$arg" = "--no-install-deps" ]; then
+        INSTALL_DEPS=0
+    elif [ "$arg" = "--install-deps" ]; then
+        # Keep for backwards compatibility
         INSTALL_DEPS=1
     else
         ARGS+=("$arg")
@@ -127,7 +130,7 @@ install_passmark() {
     sudo mkdir -p "$pt_dir"
     local tmpzip=$(mktemp)
 
-    if curl -fsSL "$url" -o "$tmpzip"; then
+    if curl -fsSL -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" "$url" -o "$tmpzip"; then
         sudo unzip -o "$tmpzip" -d "$pt_dir"
         # Handle different binary names
         if [ -f "$pt_dir/$pt_binary" ]; then
@@ -150,7 +153,7 @@ if [ "$INSTALL_DEPS" -eq 1 ]; then
     echo ""
     install_packages
     echo ""
-    install_passmark
+    install_passmark || true  # PassMark is optional, continue if unavailable
     echo ""
     echo "Dependencies installed."
     echo ""

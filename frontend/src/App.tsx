@@ -121,11 +121,39 @@ function App() {
     {} as Record<string, TestInfo[]>
   );
 
+  const goHome = () => {
+    setView("list");
+    setSelectedBenchmark(null);
+    setSelectedTest(null);
+  };
+
   return (
     <div className="app">
       <header className="header">
-        <pre className="logo">{LOGO}</pre>
+        <pre className="logo clickable" onClick={goHome}>{LOGO}</pre>
+        <a
+          href="https://github.com/mkoskinen/benchcom"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="github-link"
+        >
+          <img src="/github-mark.svg" alt="GitHub" className="github-icon" />
+        </a>
       </header>
+
+      <div className="curl-command">
+        <code
+          className="curl-code"
+          onClick={() => {
+            navigator.clipboard.writeText(
+              `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL}`
+            );
+          }}
+          title="Click to copy"
+        >
+          curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url {API_URL}
+        </code>
+      </div>
 
       {view === "list" && (
         <>

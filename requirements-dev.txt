@@ -1,0 +1,4 @@
+# Development and test dependencies
+pytest>=7.0.0
+httpx>=0.24.0
+ruff>=0.1.0

@@ -26,6 +26,11 @@ function BenchmarkList({
     );
   };
 
+  const cropHostname = (hostname: string) => {
+    const dotIndex = hostname.indexOf(".");
+    return dotIndex > 0 ? hostname.substring(0, dotIndex) : hostname;
+  };
+
   return (
     <table className="benchmark-table">
       <thead>
@@ -52,7 +57,7 @@ function BenchmarkList({
                 />
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
-                <strong>{benchmark.hostname}</strong>
+                <strong>{cropHostname(benchmark.hostname)}</strong>
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 {benchmark.architecture}

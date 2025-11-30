@@ -131,11 +131,15 @@ class BenchmarkRunner:
 
     def run_7zip(self):
         """Run 7-Zip benchmark"""
-        cmd_7z = (
-            "7z"
-            if self.check_command("7z")
-            else ("7za" if self.check_command("7za") else None)
-        )
+        # Try different 7z binary names:
+        # - 7z: p7zip on most distros
+        # - 7za: p7zip standalone
+        # - 7zz: 7zip package on Debian/Ubuntu
+        cmd_7z = None
+        for cmd in ["7z", "7za", "7zz"]:
+            if self.check_command(cmd):
+                cmd_7z = cmd
+                break
 
         if not cmd_7z:
             self.log("7z not found, skipping...")
