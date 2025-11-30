@@ -112,12 +112,8 @@ install_passmark() {
             return 0
         fi
 
-        # Determine architecture
-        if [[ "$arch" == "arm64" ]]; then
-            url="https://www.passmark.com/downloads/pt_mac_arm64.zip"
-        else
-            url="https://www.passmark.com/downloads/pt_mac_x64.zip"
-        fi
+        # Single universal download for macOS
+        url="https://www.passmark.com/downloads/PerformanceTest_Mac_CMD.zip"
 
         echo "Downloading PassMark CLI for macOS ($arch)..."
         mkdir -p "$pt_mac_dir"

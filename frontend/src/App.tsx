@@ -299,17 +299,17 @@ function App() {
                     <span key={test.test_name} className="test-nav-item">
                       <span
                         className="test-nav-link"
-                        onClick={() => handleSelectTest(test.test_name)}
-                        title="View all results"
+                        onClick={() => handleSelectStats(test.test_name)}
+                        title="View median stats by CPU/System"
                       >
                         {test.test_name}
                       </span>
                       <span
                         className="test-nav-stats"
-                        onClick={() => handleSelectStats(test.test_name)}
-                        title="View median stats by CPU/System"
+                        onClick={() => handleSelectTest(test.test_name)}
+                        title="View all individual results"
                       >
-                        [stats]
+                        [full]
                       </span>
                     </span>
                   ))}

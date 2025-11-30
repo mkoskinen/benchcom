@@ -172,12 +172,12 @@ class BenchmarkRunner:
             match = re.search(r"(?:Avr|Tot):\s+\d+\s+\d+\s+(\d+)", output)
             if match:
                 mips = float(match.group(1))
-                self.add_result("7zip_1t", "compression", mips, "MIPS", output)
+                self.add_result("7zip_st", "compression", mips, "MIPS", output)
                 self.log(f"  Single-thread: {mips:.0f} MIPS")
         elif ret != 0:
             self.log(f"  7zip benchmark failed (exit code {ret})")
 
-        # Multi-thread
+        # Multi-thread (all cores) - use consistent name regardless of core count
         self.log(f"=== 7-ZIP BENCHMARK ({self.cores} threads) ===")
         output, ret = self.run_command([cmd_7z, "b", f"-mmt{self.cores}"], timeout=120)
         if output and ret == 0:
@@ -187,9 +187,8 @@ class BenchmarkRunner:
             match = re.search(r"(?:Avr|Tot):\s+\d+\s+\d+\s+(\d+)", output)
             if match:
                 mips = float(match.group(1))
-                self.add_result(
-                    f"7zip_{self.cores}t", "compression", mips, "MIPS", output
-                )
+                self.add_result("7zip_mt", "compression", mips, "MIPS", output,
+                               metrics={"threads": self.cores})
                 self.log(f"  Multi-thread ({self.cores}): {mips:.0f} MIPS")
         elif ret != 0:
             self.log(f"  7zip benchmark failed (exit code {ret})")
@@ -268,14 +267,14 @@ class BenchmarkRunner:
             match = re.search(r"events per second:\s+([\d.]+)", output)
             if match:
                 eps = float(match.group(1))
-                self.add_result("sysbench_cpu_1t", "cpu", eps, "events/sec", output)
+                self.add_result("sysbench_cpu_st", "cpu", eps, "events/sec", output)
                 self.log(f"  Single-thread: {eps:.2f} events/sec")
             else:
                 self.log("  Could not parse sysbench output")
         elif ret != 0:
             self.log(f"  sysbench failed (exit code {ret})")
 
-        # Multi-thread
+        # Multi-thread (all cores) - use consistent name regardless of core count
         self.log(f"=== SYSBENCH CPU ({self.cores} threads) ===")
         output, ret = self.run_command(
             ["sysbench", "cpu", f"--threads={self.cores}", "--time=10", "run"]
@@ -287,7 +286,9 @@ class BenchmarkRunner:
             match = re.search(r"events per second:\s+([\d.]+)", output)
             if match:
                 eps = float(match.group(1))
-                self.add_result(f"sysbench_cpu_{self.cores}t", "cpu", eps, "events/sec", output)
+                # Use "sysbench_cpu_mt" for all multi-thread results (comparable across systems)
+                self.add_result("sysbench_cpu_mt", "cpu", eps, "events/sec", output,
+                               metrics={"threads": self.cores})
                 self.log(f"  Multi-thread ({self.cores}): {eps:.2f} events/sec")
             else:
                 self.log("  Could not parse sysbench output")
