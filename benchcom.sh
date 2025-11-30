@@ -102,9 +102,48 @@ install_passmark() {
     local pt_binary=""
 
     if [[ "$os" == "Darwin" ]]; then
-        # macOS - PassMark available via App Store or direct download
-        echo "PassMark for macOS: Install from App Store or https://www.passmark.com/products/pt_mac/"
-        echo "Skipping automatic installation on macOS"
+        # macOS - download CLI tool from PassMark
+        local pt_mac_dir="$HOME/.cache/benchcom"
+        local pt_mac_bin="$pt_mac_dir/pt_mac"
+
+        # Check if already installed
+        if [ -f "$pt_mac_bin" ]; then
+            echo "PassMark CLI already installed at $pt_mac_bin"
+            return 0
+        fi
+
+        # Determine architecture
+        if [[ "$arch" == "arm64" ]]; then
+            url="https://www.passmark.com/downloads/pt_mac_arm64.zip"
+        else
+            url="https://www.passmark.com/downloads/pt_mac_x64.zip"
+        fi
+
+        echo "Downloading PassMark CLI for macOS ($arch)..."
+        mkdir -p "$pt_mac_dir"
+        local tmpzip=$(mktemp)
+        local tmpdir=$(mktemp -d)
+
+        if curl -fsSL -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" "$url" -o "$tmpzip"; then
+            unzip -o "$tmpzip" -d "$tmpdir" 2>/dev/null
+            # Find pt_mac binary in extracted files
+            local found_binary=$(find "$tmpdir" -name "pt_mac" -type f 2>/dev/null | head -1)
+            if [ -n "$found_binary" ]; then
+                cp "$found_binary" "$pt_mac_bin"
+                chmod +x "$pt_mac_bin"
+                echo "PassMark CLI installed to $pt_mac_bin"
+                # Remove quarantine attribute if present
+                xattr -d com.apple.quarantine "$pt_mac_bin" 2>/dev/null || true
+            else
+                echo "Warning: pt_mac binary not found in download"
+            fi
+            rm -rf "$tmpdir" "$tmpzip"
+        else
+            echo "Warning: Failed to download PassMark CLI"
+            rm -f "$tmpzip"
+            rm -rf "$tmpdir"
+            return 1
+        fi
         return 0
     fi
 

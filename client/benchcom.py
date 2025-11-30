@@ -151,37 +151,48 @@ class BenchmarkRunner:
             self.log("7z not found, skipping...")
             return
 
-        # Get version
-        version = self.get_tool_version(cmd_7z)
-        if version:
-            self.tool_versions["7zip"] = version
+        # Get version - 7z uses different version flags
+        # Try running without args to get version from header
+        version_output, _ = self.run_command([cmd_7z])
+        if version_output:
+            # Look for version line like "7-Zip [64] 17.05" or "p7zip Version 17.05"
+            match = re.search(r"(?:7-Zip|p7zip)[^\d]*(\d+\.\d+)", version_output)
+            if match:
+                self.tool_versions["7zip"] = f"7-Zip {match.group(1)}"
 
         # Single thread
         self.log("=== 7-ZIP BENCHMARK (1 thread) ===")
-        output, _ = self.run_command([cmd_7z, "b", "-mmt1"])
-        if output:
+        output, ret = self.run_command([cmd_7z, "b", "-mmt1"], timeout=120)
+        if output and ret == 0:
             with open(self.output_dir / "7zip_1t.txt", "w") as f:
                 f.write(output)
 
-            # Extract MIPS from "Avr:" line
-            match = re.search(r"Avr:\s+\d+\s+\d+\s+(\d+)", output)
+            # Extract MIPS from "Avr:" line (format: "Avr:   12345   12345   12345")
+            # or "Tot:" line for total
+            match = re.search(r"(?:Avr|Tot):\s+\d+\s+\d+\s+(\d+)", output)
             if match:
                 mips = float(match.group(1))
                 self.add_result("7zip_1t", "compression", mips, "MIPS", output)
+                self.log(f"  Single-thread: {mips:.0f} MIPS")
+        elif ret != 0:
+            self.log(f"  7zip benchmark failed (exit code {ret})")
 
         # Multi-thread
         self.log(f"=== 7-ZIP BENCHMARK ({self.cores} threads) ===")
-        output, _ = self.run_command([cmd_7z, "b", f"-mmt{self.cores}"])
-        if output:
+        output, ret = self.run_command([cmd_7z, "b", f"-mmt{self.cores}"], timeout=120)
+        if output and ret == 0:
             with open(self.output_dir / f"7zip_{self.cores}t.txt", "w") as f:
                 f.write(output)
 
-            match = re.search(r"Avr:\s+\d+\s+\d+\s+(\d+)", output)
+            match = re.search(r"(?:Avr|Tot):\s+\d+\s+\d+\s+(\d+)", output)
             if match:
                 mips = float(match.group(1))
                 self.add_result(
                     f"7zip_{self.cores}t", "compression", mips, "MIPS", output
                 )
+                self.log(f"  Multi-thread ({self.cores}): {mips:.0f} MIPS")
+        elif ret != 0:
+            self.log(f"  7zip benchmark failed (exit code {ret})")
 
         self.log("")
 
@@ -258,6 +269,11 @@ class BenchmarkRunner:
             if match:
                 eps = float(match.group(1))
                 self.add_result("sysbench_cpu_1t", "cpu", eps, "events/sec", output)
+                self.log(f"  Single-thread: {eps:.2f} events/sec")
+            else:
+                self.log("  Could not parse sysbench output")
+        elif ret != 0:
+            self.log(f"  sysbench failed (exit code {ret})")
 
         # Multi-thread
         self.log(f"=== SYSBENCH CPU ({self.cores} threads) ===")
@@ -272,6 +288,11 @@ class BenchmarkRunner:
             if match:
                 eps = float(match.group(1))
                 self.add_result(f"sysbench_cpu_{self.cores}t", "cpu", eps, "events/sec", output)
+                self.log(f"  Multi-thread ({self.cores}): {eps:.2f} events/sec")
+            else:
+                self.log("  Could not parse sysbench output")
+        elif ret != 0:
+            self.log(f"  sysbench failed (exit code {ret})")
 
         self.log("")
 
@@ -293,6 +314,11 @@ class BenchmarkRunner:
             if match:
                 speed = float(match.group(1))
                 self.add_result("sysbench_memory", "memory", speed, "MiB/sec", output)
+                self.log(f"  Memory throughput: {speed:.2f} MiB/sec")
+            else:
+                self.log("  Could not parse sysbench output")
+        elif ret != 0:
+            self.log(f"  sysbench memory failed (exit code {ret})")
 
         self.log("")
 
@@ -300,10 +326,24 @@ class BenchmarkRunner:
         """Run PassMark PerformanceTest"""
         # Platform-specific paths
         if platform.system() == "Darwin":
+            # macOS: pt_mac CLI tool (installed by benchcom.sh to ~/.cache/benchcom)
             pt_paths = [
-                "/Applications/PerformanceTest.app/Contents/MacOS/PerformanceTest",
-                str(Path.home() / "Applications/PerformanceTest.app/Contents/MacOS/PerformanceTest"),
+                # Primary install location (benchcom.sh installs here)
+                str(Path.home() / ".cache/benchcom/pt_mac"),
+                # Common install locations
                 "/usr/local/bin/pt_mac",
+                "/opt/homebrew/bin/pt_mac",
+                # Downloads folder (user may have extracted here)
+                str(Path.home() / "Downloads/PerformanceTest/pt_mac"),
+                str(Path.home() / "Downloads/pt_mac"),
+                # Desktop
+                str(Path.home() / "Desktop/PerformanceTest/pt_mac"),
+                str(Path.home() / "Desktop/pt_mac"),
+                # Applications folder (CLI version)
+                "/Applications/PerformanceTest/pt_mac",
+                str(Path.home() / "Applications/PerformanceTest/pt_mac"),
+                # Just try pt_mac in PATH
+                "pt_mac",
             ]
         else:
             pt_paths = [
@@ -327,7 +367,12 @@ class BenchmarkRunner:
                 break
 
         if not pt_cmd:
-            self.log("PassMark not found, skipping...")
+            if platform.system() == "Darwin":
+                self.log("PassMark not found. Download pt_mac CLI from:")
+                self.log("  https://www.passmark.com/products/pt_mac/")
+                self.log("  Then place pt_mac in ~/Downloads/PerformanceTest/ or /usr/local/bin/")
+            else:
+                self.log("PassMark not found, skipping...")
             return
 
         self.log("=== PASSMARK PERFORMANCETEST ===")
