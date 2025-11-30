@@ -39,9 +39,14 @@ function App() {
     { label: "CPU MT (system)", test: "passmark_cpu_mt", groupBy: "system" },
     { label: "CPU MT (CPU)", test: "passmark_cpu_mt", groupBy: "cpu" },
     { label: "CPU ST (system)", test: "passmark_cpu_single", groupBy: "system" },
+    { label: "CPU ST (CPU)", test: "passmark_cpu_single", groupBy: "cpu" },
     { label: "Memory (system)", test: "passmark_memory", groupBy: "system" },
     { label: "AES256 (CPU)", test: "openssl_aes256", groupBy: "cpu" },
     { label: "SHA256 (CPU)", test: "openssl_sha256", groupBy: "cpu" },
+    { label: "Sysbench ST (CPU)", test: "sysbench_cpu_st", groupBy: "cpu" },
+    { label: "Sysbench MT (CPU)", test: "sysbench_cpu_mt", groupBy: "cpu" },
+    { label: "Pi Calc (CPU)", test: "pi_calculation", groupBy: "cpu" },
+    { label: "Disk Write (system)", test: "disk_write", groupBy: "system" },
   ];
   const [selectedBenchmark, setSelectedBenchmark] = useState<number | null>(
     null
