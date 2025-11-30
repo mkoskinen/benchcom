@@ -26,7 +26,9 @@ done
 
 # Detect package manager
 detect_pkg_manager() {
-    if command -v dnf &> /dev/null; then
+    if [[ "$(uname)" == "Darwin" ]]; then
+        echo "brew"
+    elif command -v dnf &> /dev/null; then
         echo "dnf"
     elif command -v apt-get &> /dev/null; then
         echo "apt"
@@ -47,20 +49,25 @@ install_packages() {
     case $pkg_manager in
         dnf)
             echo "Installing benchmark dependencies via dnf..."
-            sudo dnf install -y p7zip p7zip-plugins openssl bc sysbench unzip curl ncurses-compat-libs
+            sudo dnf install -y p7zip p7zip-plugins openssl bc sysbench unzip curl ncurses-compat-libs python3-requests
             ;;
         apt)
             echo "Installing benchmark dependencies via apt..."
             sudo apt-get update
-            sudo apt-get install -y p7zip-full openssl bc sysbench unzip curl
+            sudo apt-get install -y p7zip-full openssl bc sysbench unzip curl python3-requests
             ;;
         pacman)
             echo "Installing benchmark dependencies via pacman..."
-            sudo pacman -Sy --noconfirm p7zip openssl bc sysbench unzip curl
+            sudo pacman -Sy --noconfirm p7zip openssl bc sysbench unzip curl python-requests
             ;;
         zypper)
             echo "Installing benchmark dependencies via zypper..."
-            sudo zypper install -y p7zip openssl bc sysbench unzip curl
+            sudo zypper install -y p7zip openssl bc sysbench unzip curl python3-requests
+            ;;
+        brew)
+            echo "Installing benchmark dependencies via Homebrew..."
+            brew install p7zip openssl bc sysbench unzip curl python3
+            pip3 install --user requests
             ;;
         *)
             echo "Warning: Unknown package manager. Please install manually:"
@@ -69,24 +76,39 @@ install_packages() {
             echo "  - bc"
             echo "  - sysbench"
             echo "  - unzip"
+            echo "  - python3-requests"
             ;;
     esac
 }
 
-# Install PassMark PerformanceTest Linux
+# Install PassMark PerformanceTest
 install_passmark() {
     local arch=$(uname -m)
+    local os=$(uname)
     local url=""
+    local pt_dir="/opt/passmark"
+    local pt_binary=""
 
+    if [[ "$os" == "Darwin" ]]; then
+        # macOS - PassMark available via App Store or direct download
+        echo "PassMark for macOS: Install from App Store or https://www.passmark.com/products/pt_mac/"
+        echo "Skipping automatic installation on macOS"
+        return 0
+    fi
+
+    # Linux
     case $arch in
         x86_64)
             url="https://www.passmark.com/downloads/PerformanceTest_Linux_x86-64.zip"
+            pt_binary="pt_linux_x64"
             ;;
         aarch64)
             url="https://www.passmark.com/downloads/PerformanceTest_Linux_ARM64.zip"
+            pt_binary="pt_linux_arm64"
             ;;
         armv7l|armhf)
             url="https://www.passmark.com/downloads/PerformanceTest_Linux_ARM32.zip"
+            pt_binary="pt_linux_arm"
             ;;
         *)
             echo "Warning: PassMark not available for architecture: $arch"
@@ -95,9 +117,9 @@ install_passmark() {
     esac
 
     echo "Downloading PassMark PerformanceTest for $arch..."
-    local pt_dir="/opt/passmark"
 
-    if [ -f "$pt_dir/pt_linux/pt_linux" ]; then
+    # Check if already installed
+    if [ -f "$pt_dir/pt_linux/pt_linux" ] || [ -f "$pt_dir/$pt_binary" ]; then
         echo "PassMark already installed at $pt_dir"
         return 0
     fi
@@ -107,9 +129,14 @@ install_passmark() {
 
     if curl -fsSL "$url" -o "$tmpzip"; then
         sudo unzip -o "$tmpzip" -d "$pt_dir"
-        sudo chmod +x "$pt_dir/pt_linux/pt_linux" 2>/dev/null || true
+        # Handle different binary names
+        if [ -f "$pt_dir/$pt_binary" ]; then
+            sudo chmod +x "$pt_dir/$pt_binary"
+            sudo ln -sf "$pt_dir/$pt_binary" "$pt_dir/pt_linux"
+        fi
+        sudo chmod +x "$pt_dir/pt_linux" 2>/dev/null || true
         rm -f "$tmpzip"
-        echo "PassMark installed to $pt_dir/pt_linux/"
+        echo "PassMark installed to $pt_dir/"
     else
         echo "Warning: Failed to download PassMark"
         rm -f "$tmpzip"

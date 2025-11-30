@@ -53,6 +53,7 @@ class BenchmarkRunner:
         api_url: Optional[str] = None,
         api_token: Optional[str] = None,
         fast: bool = False,
+        full: bool = False,
     ):
         self.hostname = socket.gethostname()
         self.start_time = datetime.now(timezone.utc)
@@ -61,6 +62,7 @@ class BenchmarkRunner:
         self.api_url = api_url
         self.api_token = api_token
         self.fast = fast
+        self.full = full
         self.tool_versions: Dict[str, str] = {}
 
         # Create output directory
@@ -568,7 +570,24 @@ class BenchmarkRunner:
         """Get DMI/SMBIOS system information"""
         dmi = {}
 
-        # Try dmidecode first (most complete, but needs root)
+        # macOS: use system_profiler
+        if platform.system() == "Darwin":
+            output, ret = self.run_command(
+                ["system_profiler", "SPHardwareDataType"], timeout=30
+            )
+            if ret == 0 and output:
+                for line in output.split("\n"):
+                    line = line.strip()
+                    if line.startswith("Model Name:"):
+                        dmi["product"] = line.split(":", 1)[1].strip()
+                    elif line.startswith("Model Identifier:"):
+                        dmi["version"] = line.split(":", 1)[1].strip()
+                    elif line.startswith("Chip:"):
+                        dmi["chip"] = line.split(":", 1)[1].strip()
+                dmi["manufacturer"] = "Apple"
+            return dmi if dmi else None
+
+        # Linux: Try dmidecode first (most complete, but needs root)
         if self.check_command("dmidecode"):
             output, ret = self.run_command(["sudo", "dmidecode", "-s", "system-manufacturer"])
             if ret == 0 and output.strip() and "Permission denied" not in output:
@@ -711,19 +730,22 @@ class BenchmarkRunner:
 
         # Run benchmarks
         if self.fast:
-            # Fast mode: just pi calculation and sysbench cpu
-            self.run_pi_calculation()
-            self.run_sysbench_cpu()
-        else:
-            # Full suite
+            # Fast mode: just openssl (usually available)
+            self.run_openssl()
+        elif self.full:
+            # Full suite: everything
             self.run_passmark()
+            self.run_openssl()
             self.run_sysbench_cpu()
             self.run_sysbench_memory()
             self.run_7zip()
-            self.run_openssl()
             self.run_pi_calculation()
             self.run_disk_write()
             self.run_disk_read()
+        else:
+            # Default: PassMark (comprehensive) + OpenSSL (fallback if PassMark unavailable)
+            self.run_passmark()
+            self.run_openssl()
 
         # Log tool versions
         if self.tool_versions:
@@ -768,7 +790,10 @@ def main():
     parser.add_argument("--api-token", help="API authentication token")
     parser.add_argument("--output-dir", help="Output directory for results")
     parser.add_argument(
-        "--fast", action="store_true", help="Fast mode: only run quick tests"
+        "--fast", action="store_true", help="Fast mode: only run openssl (quick)"
+    )
+    parser.add_argument(
+        "--full", action="store_true", help="Full mode: run all benchmarks (passmark, openssl, sysbench, 7zip, disk I/O)"
     )
     parser.add_argument(
         "--version", action="version", version=f"BENCHCOM v{BENCHCOM_VERSION}"
@@ -781,6 +806,7 @@ def main():
         api_url=args.api_url,
         api_token=args.api_token,
         fast=args.fast,
+        full=args.full,
     )
 
     runner.run_all()
