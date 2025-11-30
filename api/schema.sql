@@ -43,7 +43,10 @@ CREATE TABLE IF NOT EXISTS benchmark_runs (
 
     -- Submitter info
     submitter_ip VARCHAR(45),
-    dmi_info JSONB
+    dmi_info JSONB,
+
+    -- Full console output from the benchmark run
+    console_output TEXT
 );
 
 CREATE INDEX idx_benchmark_runs_hostname ON benchmark_runs(hostname);

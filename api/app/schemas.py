@@ -56,6 +56,7 @@ class BenchmarkRunCreate(BaseModel):
     tags: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     dmi_info: Optional[Dict[str, str]] = None
+    console_output: Optional[str] = None
     results: List[BenchmarkResultCreate]
 
 
@@ -89,5 +90,6 @@ class BenchmarkRunDetail(BaseModel):
     tags: Optional[Dict[str, Any]]
     notes: Optional[str]
     dmi_info: Optional[Dict[str, str]]
+    console_output: Optional[str]
     username: Optional[str]
     results: List[BenchmarkResultResponse]

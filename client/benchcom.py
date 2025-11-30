@@ -74,11 +74,13 @@ class BenchmarkRunner:
 
         self.output_dir.mkdir(exist_ok=True)
         self.log_file = self.output_dir / "benchmark_summary.txt"
+        self.console_log: List[str] = []
 
     def log(self, message: str, also_print: bool = True):
         """Log message to file and optionally print to console"""
         if also_print:
             print(message)
+        self.console_log.append(message)
         with open(self.log_file, "a") as f:
             f.write(message + "\n")
 
@@ -689,6 +691,7 @@ class BenchmarkRunner:
                 "benchcom_version": BENCHCOM_VERSION,
                 "tool_versions": self.tool_versions,
             },
+            "console_output": "\n".join(self.console_log),
             "results": results_data["results"],
         }
 

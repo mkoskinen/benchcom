@@ -152,9 +152,9 @@ async def submit_benchmark(
             hostname, architecture, cpu_model, cpu_cores, total_memory_mb,
             os_info, kernel_version, benchmark_started_at, benchmark_completed_at,
             user_id, is_anonymous, benchmark_version, tags, notes,
-            submitter_ip, dmi_info
+            submitter_ip, dmi_info, console_output
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::jsonb)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::jsonb, $17)
         RETURNING id
     """
     run_id = await db.fetchval(
@@ -175,6 +175,7 @@ async def submit_benchmark(
         benchmark.notes,
         submitter_ip,
         dmi_json,
+        benchmark.console_output,
     )
 
     # Insert results
@@ -277,6 +278,7 @@ async def get_benchmark(benchmark_id: int):
             br.tags,
             br.notes,
             br.dmi_info,
+            br.console_output,
             u.username
         FROM benchmark_runs br
         LEFT JOIN users u ON br.user_id = u.id
