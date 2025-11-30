@@ -9,8 +9,11 @@ import { useAuth } from "./context/AuthContext";
 import { Benchmark, TestInfo, BenchmarkStat } from "./types";
 import axios from "axios";
 
-// Derive API URL from current location (frontend:3000 -> api:8000)
+// API_URL for fetch requests (empty = relative path, works with reverse proxy)
 const API_URL = import.meta.env.VITE_API_URL || "";
+
+// Display URL for curl commands (shows the actual server URL)
+const DISPLAY_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
 const LOGO = `██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
 ██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║
@@ -220,11 +223,11 @@ function App() {
           <code
             className="curl-code"
             onClick={() => copyToClipboard(
-              `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL}`
+              `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL}`
             )}
             title="Click to copy"
           >
-            curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url {API_URL}
+            curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url {DISPLAY_URL}
           </code>
           <span
             className="expand-toggle"
@@ -241,11 +244,11 @@ function App() {
               <code
                 className="curl-code"
                 onClick={() => copyToClipboard(
-                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --fast`
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL} --fast`
                 )}
                 title="Click to copy"
               >
-                ... | bash -s -- --api-url {API_URL} --fast
+                ... | bash -s -- --api-url {DISPLAY_URL} --fast
               </code>
             </div>
 
@@ -254,11 +257,11 @@ function App() {
               <code
                 className="curl-code"
                 onClick={() => copyToClipboard(
-                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --full`
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL} --full`
                 )}
                 title="Click to copy"
               >
-                ... | bash -s -- --api-url {API_URL} --full
+                ... | bash -s -- --api-url {DISPLAY_URL} --full
               </code>
             </div>
 
@@ -267,11 +270,11 @@ function App() {
               <code
                 className="curl-code"
                 onClick={() => copyToClipboard(
-                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --no-install-deps`
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL} --no-install-deps`
                 )}
                 title="Click to copy"
               >
-                ... | bash -s -- --api-url {API_URL} --no-install-deps
+                ... | bash -s -- --api-url {DISPLAY_URL} --no-install-deps
               </code>
             </div>
 
@@ -280,11 +283,11 @@ function App() {
               <code
                 className="curl-code"
                 onClick={() => copyToClipboard(
-                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${API_URL} --api-username YOUR_USER --api-password YOUR_PASS`
+                  `curl -sL https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh | bash -s -- --api-url ${DISPLAY_URL} --api-username YOUR_USER --api-password YOUR_PASS`
                 )}
                 title="Click to copy"
               >
-                ... | bash -s -- --api-url {API_URL} --api-username USER --api-password PASS
+                ... | bash -s -- --api-url {DISPLAY_URL} --api-username USER --api-password PASS
               </code>
             </div>
 
@@ -293,11 +296,11 @@ function App() {
               <code
                 className="curl-code"
                 onClick={() => copyToClipboard(
-                  `curl -sLO https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh && chmod +x benchcom.sh && ./benchcom.sh --api-url ${API_URL}`
+                  `curl -sLO https://raw.githubusercontent.com/mkoskinen/benchcom/main/benchcom.sh && chmod +x benchcom.sh && ./benchcom.sh --api-url ${DISPLAY_URL}`
                 )}
                 title="Click to copy"
               >
-                curl -sLO .../benchcom.sh && chmod +x benchcom.sh && ./benchcom.sh --api-url {API_URL}
+                curl -sLO .../benchcom.sh && chmod +x benchcom.sh && ./benchcom.sh --api-url {DISPLAY_URL}
               </code>
             </div>
           </div>
