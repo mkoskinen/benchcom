@@ -88,6 +88,17 @@ class BenchmarkRunner:
         with open(self.log_file, "a") as f:
             f.write(message + "\n")
 
+    def log_raw_output(self, label: str, output: str, max_lines: int = 20):
+        """Log raw command output for debugging (truncated)"""
+        lines = output.strip().split('\n')
+        if len(lines) > max_lines:
+            truncated = lines[:max_lines] + [f"... ({len(lines) - max_lines} more lines)"]
+        else:
+            truncated = lines
+        self.log(f"  [{label} raw output]")
+        for line in truncated:
+            self.log(f"    {line}")
+
     def run_command(self, cmd: List[str], timeout: int = 300) -> Tuple[str, int]:
         """Run a command and return (output, return_code)"""
         try:
@@ -190,6 +201,7 @@ class BenchmarkRunner:
             output, ret = self.run_command([cmd_7z, "b"], timeout=120)
             has_benchmark_output = output and ("MIPS" in output or "Avr:" in output or "Tot:" in output)
         if has_benchmark_output and ret == 0:
+            self.log_raw_output("7zip 1t", output)
             with open(self.output_dir / "7zip_1t.txt", "w") as f:
                 f.write(output)
 
@@ -216,6 +228,7 @@ class BenchmarkRunner:
             # (can't control thread count, already ran default in ST test)
             self.log("  Skipping MT test (p7zip version doesn't support thread control)")
         elif has_benchmark_output and ret == 0:
+            self.log_raw_output(f"7zip {self.cores}t", output)
             with open(self.output_dir / f"7zip_{self.cores}t.txt", "w") as f:
                 f.write(output)
 
@@ -433,6 +446,12 @@ class BenchmarkRunner:
 
     def run_sysbench_cpu(self):
         """Run sysbench CPU benchmark"""
+        if platform.system() == "Darwin":
+            self.log("=== SYSBENCH CPU ===")
+            self.log("  Skipping on macOS (sysbench results unreliable on Apple Silicon)")
+            self.log("")
+            return
+
         if not self.check_command("sysbench"):
             self.log("sysbench not found, skipping...")
             return
@@ -446,6 +465,7 @@ class BenchmarkRunner:
         self.log("=== SYSBENCH CPU (1 thread) ===")
         output, ret = self.run_command(self._get_sysbench_cmd("cpu", 1, 10))
         if ret == 0 and output:
+            self.log_raw_output("sysbench cpu 1t", output)
             with open(self.output_dir / "sysbench_cpu_1t.txt", "w") as f:
                 f.write(output)
 
@@ -463,6 +483,7 @@ class BenchmarkRunner:
         self.log(f"=== SYSBENCH CPU ({self.cores} threads) ===")
         output, ret = self.run_command(self._get_sysbench_cmd("cpu", self.cores, 10))
         if ret == 0 and output:
+            self.log_raw_output(f"sysbench cpu {self.cores}t", output)
             with open(self.output_dir / f"sysbench_cpu_{self.cores}t.txt", "w") as f:
                 f.write(output)
 
@@ -496,6 +517,7 @@ class BenchmarkRunner:
 
         output, ret = self.run_command(cmd)
         if ret == 0 and output:
+            self.log_raw_output("sysbench memory", output)
             with open(self.output_dir / "sysbench_memory.txt", "w") as f:
                 f.write(output)
 
@@ -604,6 +626,7 @@ class BenchmarkRunner:
                 continue
 
         if results_yaml:
+            self.log_raw_output("passmark yaml", results_yaml, max_lines=30)
             with open(self.output_dir / "passmark_raw.yml", "w") as f:
                 f.write(results_yaml)
 
