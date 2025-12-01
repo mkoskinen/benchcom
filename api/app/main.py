@@ -307,6 +307,46 @@ async def list_benchmarks(
     return result
 
 
+@app.delete(f"{settings.API_V1_PREFIX}/benchmarks/{{benchmark_id}}")
+async def delete_benchmark(
+    benchmark_id: int,
+    current_user=Depends(get_current_user),
+):
+    """Delete a benchmark run. Admins can delete any, users can delete their own."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to delete benchmarks",
+        )
+
+    # Get the benchmark to check ownership
+    run = await db.fetchrow(
+        "SELECT id, user_id FROM benchmark_runs WHERE id = $1",
+        benchmark_id,
+    )
+    if not run:
+        raise HTTPException(status_code=404, detail="Benchmark not found")
+
+    # Check permission: admin can delete any, user can delete their own
+    is_admin = current_user.get("is_admin", False)
+    is_owner = run["user_id"] == current_user["id"]
+
+    if not is_admin and not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own submissions",
+        )
+
+    # Delete results first (in case there's no cascade)
+    await db.execute("DELETE FROM benchmark_results WHERE run_id = $1", benchmark_id)
+    # Delete the run
+    await db.execute("DELETE FROM benchmark_runs WHERE id = $1", benchmark_id)
+
+    logger.info(f"Benchmark {benchmark_id} deleted by user {current_user['id']} (admin={is_admin})")
+
+    return {"message": f"Benchmark {benchmark_id} deleted successfully"}
+
+
 @app.get(
     f"{settings.API_V1_PREFIX}/benchmarks/{{benchmark_id}}",
     response_model=BenchmarkRunDetail,
