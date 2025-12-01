@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check db-dump
+.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check db-dump deploy-frontend deploy-api deploy
 
 # Default target
 help:
@@ -24,6 +24,11 @@ help:
 	@echo "    make test-up    - Start test containers only"
 	@echo "    make test-down  - Stop test containers"
 	@echo "    make dev-deps   - Install development dependencies"
+	@echo ""
+	@echo "  Deployment:"
+	@echo "    make deploy-frontend - Rebuild and redeploy frontend (no cache)"
+	@echo "    make deploy-api      - Rebuild and redeploy API (no cache)"
+	@echo "    make deploy          - Redeploy all services (no cache)"
 	@echo ""
 	@echo "  Development:"
 	@echo "    make db-shell   - Connect to PostgreSQL shell"
@@ -133,3 +138,30 @@ check: lint
 	cd frontend && npm run typecheck
 	@echo ""
 	@echo "All checks passed!"
+
+# Deploy frontend (rebuild with no cache, restart container)
+deploy-frontend:
+	@echo "=== Deploying frontend ==="
+	podman stop benchcom-frontend 2>/dev/null || true
+	podman rm benchcom-frontend 2>/dev/null || true
+	podman rmi benchcom_frontend 2>/dev/null || true
+	podman build --no-cache --build-arg CACHEBUST=$$(date +%s) -t benchcom_frontend -f frontend/Dockerfile frontend/
+	podman-compose up -d frontend
+	@echo "Frontend deployed! Clear browser cache (Ctrl+Shift+R) to see changes."
+
+# Deploy API (rebuild with no cache, restart container)
+deploy-api:
+	@echo "=== Deploying API ==="
+	podman stop benchcom-api 2>/dev/null || true
+	podman rm benchcom-api 2>/dev/null || true
+	podman rmi benchcom_api 2>/dev/null || true
+	podman build --no-cache -t benchcom_api -f api/Dockerfile api/
+	podman-compose up -d api
+	@echo "API deployed!"
+
+# Deploy all services (no cache rebuild)
+deploy: deploy-api deploy-frontend
+	@echo ""
+	@echo "=== All services deployed ==="
+	@echo "API: http://localhost:8000"
+	@echo "Frontend: http://localhost:3000"

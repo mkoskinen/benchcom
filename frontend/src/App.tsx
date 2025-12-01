@@ -60,6 +60,17 @@ function App() {
     navigator.clipboard.writeText(text);
   };
 
+  const formatLeaderboardValue = (value: number | null | undefined, unit: string | null | undefined) => {
+    if (value === null || value === undefined) return "—";
+    // Show 2 decimal places for time-based units (seconds)
+    const u = unit?.toLowerCase() ?? "";
+    if (u.includes("second") || u === "s" || u === "ns") {
+      return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    // No decimals for large scores
+    return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  };
+
   useEffect(() => {
     fetchBenchmarks();
     fetchTests();
@@ -385,7 +396,7 @@ function App() {
                         : (stat.system_type || stat.cpu_model || "Unknown")}
                     </span>
                     <span className="leaderboard-value">
-                      {stat.median_value?.toLocaleString(undefined, { maximumFractionDigits: 0 })} {stat.unit}
+                      {formatLeaderboardValue(stat.median_value, stat.unit)} {stat.unit}
                     </span>
                     <span className="leaderboard-meta">n={stat.sample_count}</span>
                   </div>
