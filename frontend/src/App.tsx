@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import BenchmarkList from "./components/BenchmarkList";
 import BenchmarkDetail from "./components/BenchmarkDetail";
 import BenchmarkCompare from "./components/BenchmarkCompare";
@@ -8,6 +8,50 @@ import AuthModal from "./components/AuthModal";
 import { useAuth } from "./context/AuthContext";
 import { Benchmark, TestInfo, BenchmarkStat } from "./types";
 import axios from "axios";
+
+// URL hash routing helpers
+function parseHash(): { view: string; id?: string; ids?: string[]; test?: string; tab?: number } {
+  const hash = window.location.hash.slice(1); // remove #
+  if (!hash) return { view: "list" };
+
+  const [path, ...rest] = hash.split("/");
+  const param = rest.join("/");
+
+  switch (path) {
+    case "run":
+      return { view: "detail", id: param };
+    case "compare":
+      return { view: "compare", ids: param.split(",") };
+    case "test":
+      return { view: "test-results", test: param };
+    case "stats":
+      return { view: "stats", test: param };
+    case "top":
+      return { view: "list", tab: parseInt(param) || 0 };
+    default:
+      return { view: "list" };
+  }
+}
+
+function buildHash(view: string, params?: { id?: number; ids?: number[]; test?: string; tab?: number }): string {
+  switch (view) {
+    case "detail":
+      return `#run/${params?.id}`;
+    case "compare":
+      return `#compare/${params?.ids?.join(",")}`;
+    case "test-results":
+      return `#test/${params?.test}`;
+    case "stats":
+      return `#stats/${params?.test}`;
+    case "list":
+      if (params?.tab !== undefined && params.tab > 0) {
+        return `#top/${params.tab}`;
+      }
+      return "";
+    default:
+      return "";
+  }
+}
 
 // API_URL for fetch requests (empty = relative path, works with reverse proxy)
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -33,6 +77,7 @@ function App() {
   const [leaderboard, setLeaderboard] = useState<BenchmarkStat[]>([]);
   const [leaderboardTab, setLeaderboardTab] = useState(0);
   const [view, setView] = useState<View>("list");
+  const [urlInitialized, setUrlInitialized] = useState(false);
 
   // Leaderboard tab configurations
   const leaderboardTabs = [
@@ -70,6 +115,46 @@ function App() {
     // No decimals for large scores
     return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
   };
+
+  // Update URL when state changes
+  const updateUrl = useCallback((newView: View, params?: { id?: number; ids?: number[]; test?: string; tab?: number }) => {
+    const hash = buildHash(newView, params);
+    if (window.location.hash !== hash) {
+      window.history.pushState(null, "", hash || window.location.pathname);
+    }
+  }, []);
+
+  // Initialize state from URL on mount
+  useEffect(() => {
+    const initFromUrl = () => {
+      const parsed = parseHash();
+      if (parsed.view === "detail" && parsed.id) {
+        setSelectedBenchmark(parseInt(parsed.id));
+        setView("detail");
+      } else if (parsed.view === "compare" && parsed.ids?.length) {
+        setSelectedForCompare(parsed.ids.map(id => parseInt(id)));
+        setView("compare");
+      } else if (parsed.view === "test-results" && parsed.test) {
+        setSelectedTest(parsed.test);
+        setView("test-results");
+      } else if (parsed.view === "stats" && parsed.test) {
+        setSelectedTest(parsed.test);
+        setView("stats");
+      } else if (parsed.tab !== undefined) {
+        setLeaderboardTab(parsed.tab);
+      }
+      setUrlInitialized(true);
+    };
+
+    initFromUrl();
+
+    // Handle browser back/forward
+    const handlePopState = () => {
+      initFromUrl();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     fetchBenchmarks();
@@ -119,16 +204,19 @@ function App() {
   const handleSelect = (id: number) => {
     setSelectedBenchmark(id);
     setView("detail");
+    updateUrl("detail", { id });
   };
 
   const handleSelectTest = (testName: string) => {
     setSelectedTest(testName);
     setView("test-results");
+    updateUrl("test-results", { test: testName });
   };
 
   const handleSelectStats = (testName: string) => {
     setSelectedTest(testName);
     setView("stats");
+    updateUrl("stats", { test: testName });
   };
 
   const handleToggleCompare = (id: number) => {
@@ -144,18 +232,21 @@ function App() {
   const handleCompare = () => {
     if (selectedForCompare.length >= 2) {
       setView("compare");
+      updateUrl("compare", { ids: selectedForCompare });
     }
   };
 
   const handleCompareFromTest = (runIds: number[]) => {
     setSelectedForCompare(runIds);
     setView("compare");
+    updateUrl("compare", { ids: runIds });
   };
 
   const handleBack = () => {
     setView("list");
     setSelectedBenchmark(null);
     setSelectedTest(null);
+    updateUrl("list");
   };
 
   const clearSelection = () => {
@@ -193,6 +284,15 @@ function App() {
     setView("list");
     setSelectedBenchmark(null);
     setSelectedTest(null);
+    updateUrl("list");
+  };
+
+  // Update URL when leaderboard tab changes (only after initial load)
+  const handleLeaderboardTabChange = (idx: number) => {
+    setLeaderboardTab(idx);
+    if (urlInitialized) {
+      updateUrl("list", { tab: idx });
+    }
   };
 
   return (
@@ -372,7 +472,7 @@ function App() {
                   <span
                     key={idx}
                     className={`leaderboard-tab ${leaderboardTab === idx ? "active" : ""}`}
-                    onClick={() => setLeaderboardTab(idx)}
+                    onClick={() => handleLeaderboardTabChange(idx)}
                   >
                     {tab.label}
                   </span>
