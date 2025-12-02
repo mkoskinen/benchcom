@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { BenchmarkStat } from "../types";
 import { getTestDescription } from "../testDescriptions";
+import TestNav from "./TestNav";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -12,9 +13,10 @@ interface StatsViewProps {
   testName: string;
   onBack: () => void;
   onViewFull?: (testName: string) => void;
+  onSelectTest?: (testName: string) => void;
 }
 
-function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
+function StatsView({ testName, onBack, onViewFull, onSelectTest }: StatsViewProps) {
   const [stats, setStats] = useState<BenchmarkStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +70,26 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
     return Math.max(...values);
   }, [stats]);
 
+  const minValue = useMemo(() => {
+    if (stats.length === 0) return 0;
+    const values = stats.map(s => s.median_value).filter((v): v is number => v !== null);
+    if (values.length === 0) return 0;
+    return Math.min(...values);
+  }, [stats]);
+
+  // Sort stats so best value is first
+  const sortedStats = useMemo(() => {
+    return [...stats].sort((a, b) => {
+      if (a.median_value === null) return 1;
+      if (b.median_value === null) return -1;
+      // For lower-is-better: ascending (lowest first)
+      // For higher-is-better: descending (highest first)
+      return isLowerBetter
+        ? a.median_value - b.median_value
+        : b.median_value - a.median_value;
+    });
+  }, [stats, isLowerBetter]);
+
   const getLabel = (stat: BenchmarkStat) => {
     if (groupBy === "cpu") return stat.cpu_model || "Unknown";
     if (groupBy === "system") return stat.system_type || "Unknown";
@@ -88,13 +110,20 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
   };
 
   const getBarWidth = (value: number | null) => {
-    if (value === null || maxValue === 0) return 0;
+    if (value === null) return 0;
+    let width: number;
     if (isLowerBetter) {
-      const minValue = stats[0]?.median_value ?? 0;
-      if (minValue === 0) return 100;
-      return (minValue / value) * 100;
+      // For lower-is-better: best (min) = 100%, worst (max) = proportionally smaller
+      if (maxValue === 0 || minValue === 0) return 100;
+      // Invert: min value gets 100%, max gets (min/max)*100%
+      width = (minValue / value) * 100;
+    } else {
+      // For higher-is-better: max = 100%, others proportionally smaller
+      if (maxValue === 0) return 0;
+      width = (value / maxValue) * 100;
     }
-    return (value / maxValue) * 100;
+    // Cap at 100% to prevent overflow
+    return Math.min(width, 100);
   };
 
   if (loading) {
@@ -117,6 +146,10 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
       <span className="back-link" onClick={onBack}>
         ← Back to list
       </span>
+
+      {onSelectTest && (
+        <TestNav currentTest={testName} onSelectTest={onSelectTest} />
+      )}
 
       <h2 className="test-title">
         {testName}
@@ -174,7 +207,7 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
         </div>
       ) : viewMode === "chart" ? (
         <div className="bar-chart">
-          {stats.map((stat, idx) => {
+          {sortedStats.map((stat, idx) => {
             const pct = getPercentage(stat.median_value);
             const isBest = stat.median_value === bestValue;
             return (
@@ -216,7 +249,7 @@ function StatsView({ testName, onBack, onViewFull }: StatsViewProps) {
             </tr>
           </thead>
           <tbody>
-            {stats.map((stat, idx) => {
+            {sortedStats.map((stat, idx) => {
               const pct = getPercentage(stat.median_value);
               const isBest = stat.median_value === bestValue;
               return (

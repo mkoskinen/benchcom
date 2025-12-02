@@ -37,7 +37,6 @@ Missing tools are skipped automatically.
 Install via `benchcom.sh --install-deps` or manually:
 - p7zip
 - openssl
-- bc
 - sysbench
 - PassMark pt_linux (optional)
 

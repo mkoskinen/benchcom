@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { TestResult } from "../types";
 import { getTestDescription } from "../testDescriptions";
+import TestNav from "./TestNav";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -13,9 +14,10 @@ interface TestResultsViewProps {
   testName: string;
   onBack: () => void;
   onCompare: (runIds: number[]) => void;
+  onSelectTest?: (testName: string) => void;
 }
 
-function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) {
+function TestResultsView({ testName, onBack, onCompare, onSelectTest }: TestResultsViewProps) {
   const [results, setResults] = useState<TestResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,13 +237,17 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
 
   const getBarWidth = (value: number | null) => {
     if (value === null || maxValue === 0) return 0;
+    let width: number;
     if (isLowerBetter) {
       // For time: invert so fastest (lowest) gets longest bar
       const minValue = chartResults[0]?.value ?? 0;
       if (minValue === 0) return 100;
-      return (minValue / value) * 100;
+      width = (minValue / value) * 100;
+    } else {
+      width = (value / maxValue) * 100;
     }
-    return (value / maxValue) * 100;
+    // Cap at 100% to prevent overflow
+    return Math.min(width, 100);
   };
 
   // Early returns AFTER all hooks
@@ -265,6 +271,10 @@ function TestResultsView({ testName, onBack, onCompare }: TestResultsViewProps) 
       <span className="back-link" onClick={onBack}>
         ← Back to list
       </span>
+
+      {onSelectTest && (
+        <TestNav currentTest={testName} onSelectTest={onSelectTest} />
+      )}
 
       <h2 className="test-title">
         {testName}

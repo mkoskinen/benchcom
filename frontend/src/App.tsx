@@ -4,9 +4,10 @@ import BenchmarkDetail from "./components/BenchmarkDetail";
 import BenchmarkCompare from "./components/BenchmarkCompare";
 import TestResultsView from "./components/TestResultsView";
 import StatsView from "./components/StatsView";
+import TestNav from "./components/TestNav";
 import AuthModal from "./components/AuthModal";
 import { useAuth } from "./context/AuthContext";
-import { Benchmark, TestInfo, BenchmarkStat } from "./types";
+import { Benchmark, BenchmarkStat } from "./types";
 import axios from "axios";
 
 // URL hash routing helpers
@@ -59,12 +60,6 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 // Display URL for curl commands (shows the actual server URL)
 const DISPLAY_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
-const LOGO = `██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗ ██████╗ ██████╗ ███╗   ███╗
-██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║██╔════╝██╔═══██╗████╗ ████║
-██████╔╝█████╗  ██╔██╗ ██║██║     ███████║██║     ██║   ██║██╔████╔██║
-██╔══██╗██╔══╝  ██║╚██╗██║██║     ██╔══██║██║     ██║   ██║██║╚██╔╝██║
-██████╔╝███████╗██║ ╚████║╚██████╗██║  ██║╚██████╗╚██████╔╝██║ ╚═╝ ██║
-╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝`;
 
 type View = "list" | "detail" | "compare" | "test-results" | "stats";
 
@@ -73,7 +68,6 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRunOptions, setShowRunOptions] = useState(false);
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
-  const [tests, setTests] = useState<TestInfo[]>([]);
   const [leaderboard, setLeaderboard] = useState<BenchmarkStat[]>([]);
   const [leaderboardTab, setLeaderboardTab] = useState(0);
   const [view, setView] = useState<View>("list");
@@ -158,7 +152,6 @@ function App() {
 
   useEffect(() => {
     fetchBenchmarks();
-    fetchTests();
   }, []);
 
   useEffect(() => {
@@ -177,15 +170,6 @@ function App() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchTests = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/v1/tests`);
-      setTests(response.data);
-    } catch (err) {
-      console.error("Failed to fetch tests:", err);
     }
   };
 
@@ -253,33 +237,6 @@ function App() {
     setSelectedForCompare([]);
   };
 
-  // Group tests by category and sort
-  const testsByCategory = tests.reduce(
-    (acc, test) => {
-      const cat = test.test_category || "other";
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(test);
-      return acc;
-    },
-    {} as Record<string, TestInfo[]>
-  );
-
-  // Sort tests within each category by name
-  Object.values(testsByCategory).forEach(catTests => {
-    catTests.sort((a, b) => a.test_name.localeCompare(b.test_name));
-  });
-
-  // Define category order (most important first)
-  const categoryOrder = ["cpu", "memory", "disk", "compression", "cryptography", "other"];
-  const sortedCategories = Object.keys(testsByCategory).sort((a, b) => {
-    const aIdx = categoryOrder.indexOf(a);
-    const bIdx = categoryOrder.indexOf(b);
-    if (aIdx === -1 && bIdx === -1) return a.localeCompare(b);
-    if (aIdx === -1) return 1;
-    if (bIdx === -1) return -1;
-    return aIdx - bIdx;
-  });
-
   const goHome = () => {
     setView("list");
     setSelectedBenchmark(null);
@@ -298,7 +255,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <pre className="logo clickable" onClick={goHome}>{LOGO}</pre>
+        <img src="/benchcom.svg" alt="BENCHCOM" className="logo clickable" onClick={goHome} />
         <div className="auth-section">
           <a
             href="https://github.com/mkoskinen/benchcom/blob/main/docs/ABOUT.md"
@@ -426,27 +383,7 @@ function App() {
       {view === "list" && (
         <>
           {/* Test type navigation */}
-          {tests.length > 0 && (
-            <div className="test-nav">
-              <span className="test-nav-label">Results by test:</span>
-              {sortedCategories.map((category) => (
-                <span key={category} className="test-nav-group">
-                  <span className="test-nav-category">{category}:</span>
-                  {testsByCategory[category].map((test) => (
-                    <span key={test.test_name} className="test-nav-item">
-                      <span
-                        className="test-nav-link"
-                        onClick={() => handleSelectStats(test.test_name)}
-                        title="View median stats by CPU/System"
-                      >
-                        {test.test_name}
-                      </span>
-                    </span>
-                  ))}
-                </span>
-              ))}
-            </div>
-          )}
+          <TestNav onSelectTest={handleSelectStats} />
 
           {selectedForCompare.length > 0 && (
             <div className="compare-bar">
@@ -538,6 +475,7 @@ function App() {
           testName={selectedTest}
           onBack={handleBack}
           onCompare={handleCompareFromTest}
+          onSelectTest={handleSelectTest}
         />
       )}
 
@@ -546,6 +484,7 @@ function App() {
           testName={selectedTest}
           onBack={handleBack}
           onViewFull={handleSelectTest}
+          onSelectTest={handleSelectStats}
         />
       )}
     </div>
