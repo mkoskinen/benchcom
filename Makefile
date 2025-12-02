@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check db-dump deploy-frontend deploy-api deploy
+.PHONY: help build up down restart logs clean db-shell api-shell test test-up test-down dev-deps client-deps lint format check db-dump db-dump-prod deploy-frontend deploy-api deploy
 
 # Default target
 help:
@@ -32,7 +32,8 @@ help:
 	@echo ""
 	@echo "  Development:"
 	@echo "    make db-shell   - Connect to PostgreSQL shell"
-	@echo "    make db-dump    - Dump database to SQL (zstd compressed)"
+	@echo "    make db-dump    - Dump database to SQL (container mode)"
+	@echo "    make db-dump-prod - Dump database to SQL (reads .env for connection)"
 	@echo "    make api-shell  - Connect to API container shell"
 	@echo "    make lint       - Run linters (ruff, eslint)"
 	@echo "    make format     - Format code (ruff, prettier)"
@@ -72,12 +73,27 @@ clean:
 db-shell:
 	podman exec -it benchcom-db psql -U benchcom -d benchcom
 
-# Dump database to SQL file (zstd compressed)
+# Dump database to SQL file (zstd compressed) - container mode
 db-dump:
 	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
 	DUMPFILE="benchcom_dump_$$TIMESTAMP.sql.zst"; \
 	echo "Dumping database to $$DUMPFILE..."; \
 	podman exec benchcom-db pg_dump -U benchcom -d benchcom | zstd -19 > $$DUMPFILE; \
+	echo "Done: $$DUMPFILE ($$(du -h $$DUMPFILE | cut -f1))"
+
+# Dump database to SQL file (zstd compressed) - production mode (reads from .env)
+db-dump-prod:
+	@if [ ! -f .env ]; then echo "Error: .env file not found"; exit 1; fi; \
+	TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	DUMPFILE="benchcom_dump_$$TIMESTAMP.sql.zst"; \
+	PGUSER=$$(grep -E '^POSTGRES_USER=' .env | cut -d= -f2); \
+	PGPASS=$$(grep -E '^POSTGRES_PASSWORD=' .env | cut -d= -f2); \
+	PGDB=$$(grep -E '^POSTGRES_DB=' .env | cut -d= -f2); \
+	PGHOST=$$(grep -E '^POSTGRES_HOST=' .env | cut -d= -f2); \
+	PGPORT=$$(grep -E '^POSTGRES_PORT=' .env | cut -d= -f2); \
+	if [ "$$PGHOST" = "host.containers.internal" ] || [ "$$PGHOST" = "db" ]; then PGHOST=localhost; fi; \
+	echo "Dumping $$PGDB@$$PGHOST:$$PGPORT to $$DUMPFILE..."; \
+	PGPASSWORD=$$PGPASS pg_dump -U $$PGUSER -h $$PGHOST -p $$PGPORT -d $$PGDB | zstd -19 > $$DUMPFILE; \
 	echo "Done: $$DUMPFILE ($$(du -h $$DUMPFILE | cut -f1))"
 
 # API shell
