@@ -751,27 +751,48 @@ class BenchmarkRunner:
         self.log("")
 
     def run_pi_calculation(self):
-        """Run Pi calculation benchmark"""
-        if not self.check_command("bc"):
-            self.log("bc not found, skipping pi calculation...")
-            return
-
+        """Run Pi calculation benchmark using Python decimal (Machin's formula)"""
         self.log("=== SIMPLE CPU TEST (calculating pi) ===")
         import time
+        from decimal import Decimal, getcontext
+
+        # Calculate 10000 digits of pi using Machin's formula
+        # This is consistent across all platforms since it uses pure Python
+        # Memory usage is minimal (~0.02 MB), safe for low-memory devices like rpi1
+        digits = 10000
+        getcontext().prec = digits + 10
+
+        self.log(f"  Calculating {digits} digits of Pi (Machin's formula)...")
 
         start = time.time()
 
-        proc = subprocess.Popen(
-            ["bc", "-l"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        proc.communicate(input="scale=5000; 4*a(1)\n")
+        def arctan(x: Decimal) -> Decimal:
+            """Calculate arctan(x) using Taylor series"""
+            power = x
+            result = power
+            x_squared = x * x
+            for n in range(1, digits + 100):
+                power *= -x_squared
+                term = power / (2 * n + 1)
+                result += term
+                if abs(term) < Decimal(10) ** (-(digits + 5)):
+                    break
+            return result
+
+        # Machin's formula: pi/4 = 4*arctan(1/5) - arctan(1/239)
+        one = Decimal(1)
+        pi = 4 * (4 * arctan(one / 5) - arctan(one / 239))
 
         elapsed = time.time() - start
-        message = f"Time to calculate 5000 digits of Pi: {elapsed:.9f}s"
+
+        # Validate result
+        pi_str = str(pi)
+        if not pi_str.startswith("3.14159265358979"):
+            self.log(f"  Pi calculation produced invalid result: {pi_str[:30]}...")
+            return
+
+        message = f"Time to calculate {digits} digits of Pi: {elapsed:.9f}s"
+        self.log(f"  Result starts with: {pi_str[:25]}...")
         self.log(message)
         self.add_result("pi_calculation", "cpu", elapsed, "seconds", message)
         self.log("")
