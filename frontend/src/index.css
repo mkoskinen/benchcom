@@ -993,6 +993,20 @@ button:hover {
   flex-wrap: wrap;
 }
 
+.csv-download {
+  padding: 4px 10px;
+  background: #333;
+  color: #fff;
+  border: 1px solid #000;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.csv-download:hover {
+  background: #555;
+}
+
 .group-by-toggle {
   display: flex;
   align-items: center;

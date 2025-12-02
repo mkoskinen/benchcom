@@ -126,6 +126,30 @@ function StatsView({ testName, onBack, onViewFull, onSelectTest }: StatsViewProp
     return Math.min(width, 100);
   };
 
+  const downloadCSV = () => {
+    if (sortedStats.length === 0) return;
+    const headers = ["Rank", "Label", "Architecture", "Median", "Mean", "Min", "Max", "Samples", "Unit"];
+    const rows = sortedStats.map((stat, idx) => [
+      idx + 1,
+      `"${getLabel(stat).replace(/"/g, '""')}"`,
+      stat.architecture,
+      stat.median_value ?? "",
+      stat.mean_value ?? "",
+      stat.min_value ?? "",
+      stat.max_value ?? "",
+      stat.sample_count,
+      unit || ""
+    ]);
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${testName}_by_${groupBy}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Only show loading on initial load, not when switching tests
   if (loading && stats.length === 0) {
     return <div className="loading">Loading stats...</div>;
@@ -200,6 +224,12 @@ function StatsView({ testName, onBack, onViewFull, onSelectTest }: StatsViewProp
             Table
           </button>
         </div>
+
+        {sortedStats.length > 0 && (
+          <button className="csv-download" onClick={downloadCSV}>
+            CSV
+          </button>
+        )}
       </div>
 
       {stats.length === 0 ? (
