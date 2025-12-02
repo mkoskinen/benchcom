@@ -126,7 +126,8 @@ function StatsView({ testName, onBack, onViewFull, onSelectTest }: StatsViewProp
     return Math.min(width, 100);
   };
 
-  if (loading) {
+  // Only show loading on initial load, not when switching tests
+  if (loading && stats.length === 0) {
     return <div className="loading">Loading stats...</div>;
   }
 
