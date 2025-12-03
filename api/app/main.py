@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import timedelta, datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +36,75 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 MAX_LIMIT = 500  # Maximum allowed limit for pagination
+
+
+class QueryBuilder:
+    """
+    Safe SQL query builder that uses parameterized queries throughout.
+    Prevents SQL injection by never interpolating user values into SQL strings.
+    """
+
+    # Whitelist of allowed column names for dynamic queries
+    ALLOWED_COLUMNS = frozenset([
+        "id", "hostname", "architecture", "cpu_model", "cpu_cores",
+        "total_memory_mb", "os_info", "kernel_version", "benchmark_started_at",
+        "benchmark_completed_at", "submitted_at", "is_anonymous", "benchmark_version",
+        "tags", "notes", "dmi_info", "console_output", "submitter_ip", "user_id",
+        "test_name", "test_category", "value", "unit", "raw_output", "metrics",
+        "run_id", "median_value", "mean_value", "min_value", "max_value",
+        "stddev_value", "sample_count", "last_updated", "system_type",
+        "username", "result_count", "total_samples", "test_count"
+    ])
+
+    # Whitelist of allowed table aliases
+    ALLOWED_ALIASES = frozenset(["br", "bres", "r", "u"])
+
+    def __init__(self):
+        self.params: List[Any] = []
+        self.param_idx = 1
+
+    def add_param(self, value: Any) -> str:
+        """Add a parameter and return its placeholder."""
+        placeholder = f"${self.param_idx}"
+        self.params.append(value)
+        self.param_idx += 1
+        return placeholder
+
+    def validate_column(self, column: str) -> str:
+        """Validate and return a safe column name."""
+        # Handle aliased columns like "br.architecture"
+        if "." in column:
+            parts = column.split(".", 1)
+            if len(parts) == 2:
+                alias, col = parts
+                if alias not in self.ALLOWED_ALIASES:
+                    raise ValueError(f"Invalid table alias: {alias}")
+                if col not in self.ALLOWED_COLUMNS:
+                    raise ValueError(f"Invalid column name: {col}")
+                return column
+        if column not in self.ALLOWED_COLUMNS:
+            raise ValueError(f"Invalid column name: {column}")
+        return column
+
+    def build_where(self, conditions: List[Tuple[str, Any]]) -> str:
+        """
+        Build a WHERE clause from a list of (column, value) tuples.
+        Returns empty string if no conditions.
+        """
+        if not conditions:
+            return ""
+
+        clauses = []
+        for column, value in conditions:
+            safe_column = self.validate_column(column)
+            placeholder = self.add_param(value)
+            clauses.append(f"{safe_column} = {placeholder}")
+
+        return "WHERE " + " AND ".join(clauses)
+
+    def get_params(self) -> List[Any]:
+        """Get the list of parameters for the query."""
+        return self.params
 
 
 # Helper functions
@@ -258,21 +327,21 @@ async def list_benchmarks(
 ):
     """List benchmark runs"""
     limit = min(limit, MAX_LIMIT)  # Enforce max limit
-    where_clauses = []
-    params = []
-    param_count = 1
+
+    # Build conditions using QueryBuilder for safe parameterized queries
+    qb = QueryBuilder()
+    conditions: List[Tuple[str, Any]] = []
 
     if architecture:
-        where_clauses.append(f"br.architecture = ${param_count}")
-        params.append(architecture)
-        param_count += 1
-
+        conditions.append(("br.architecture", architecture))
     if hostname:
-        where_clauses.append(f"br.hostname = ${param_count}")
-        params.append(hostname)
-        param_count += 1
+        conditions.append(("br.hostname", hostname))
 
-    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    where_sql = qb.build_where(conditions)
+
+    # Add limit and offset as parameters
+    limit_placeholder = qb.add_param(limit)
+    offset_placeholder = qb.add_param(offset)
 
     query = f"""
         SELECT
@@ -294,11 +363,10 @@ async def list_benchmarks(
         {where_sql}
         GROUP BY br.id, u.username
         ORDER BY br.submitted_at DESC
-        LIMIT ${param_count} OFFSET ${param_count + 1}
+        LIMIT {limit_placeholder} OFFSET {offset_placeholder}
     """
-    params.extend([limit, offset])
 
-    rows = await db.fetch(query, *params)
+    rows = await db.fetch(query, *qb.get_params())
     result = []
     for row in rows:
         row_dict = dict(row)
@@ -441,21 +509,18 @@ async def get_results_by_test(
 ):
     """Get results grouped by test, sorted by best value first"""
     limit = min(limit, MAX_LIMIT)  # Enforce max limit
-    where_clauses = []
-    params = []
-    param_count = 1
+
+    # Build conditions using QueryBuilder for safe parameterized queries
+    qb = QueryBuilder()
+    conditions: List[Tuple[str, Any]] = []
 
     if test_name:
-        where_clauses.append(f"bres.test_name = ${param_count}")
-        params.append(test_name)
-        param_count += 1
-
+        conditions.append(("bres.test_name", test_name))
     if test_category:
-        where_clauses.append(f"bres.test_category = ${param_count}")
-        params.append(test_category)
-        param_count += 1
+        conditions.append(("bres.test_category", test_category))
 
-    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    where_sql = qb.build_where(conditions)
+    limit_placeholder = qb.add_param(limit)
 
     query = f"""
         SELECT
@@ -479,11 +544,10 @@ async def get_results_by_test(
                 WHEN bres.unit ILIKE '%second%' THEN bres.value
                 ELSE -bres.value
             END ASC NULLS LAST
-        LIMIT ${param_count}
+        LIMIT {limit_placeholder}
     """
-    params.append(limit)
 
-    rows = await db.fetch(query, *params)
+    rows = await db.fetch(query, *qb.get_params())
     result = []
     for row in rows:
         row_dict = dict(row)
@@ -523,29 +587,30 @@ async def refresh_benchmark_stats(
     If filters provided, only refresh matching rows (for incremental updates).
     Otherwise, refresh all stats.
     """
-    # Build WHERE clause for filtering which stats to refresh
-    where_clauses = []
-    params = []
-    param_idx = 1
+    # Build WHERE clause using safe parameterized queries
+    qb = QueryBuilder()
+    where_parts: List[str] = []
 
     if cpu_model is not None:
-        where_clauses.append(f"r.cpu_model = ${param_idx}")
-        params.append(cpu_model)
-        param_idx += 1
+        placeholder = qb.add_param(cpu_model)
+        where_parts.append(f"r.cpu_model = {placeholder}")
     if architecture is not None:
-        where_clauses.append(f"r.architecture = ${param_idx}")
-        params.append(architecture)
-        param_idx += 1
+        placeholder = qb.add_param(architecture)
+        where_parts.append(f"r.architecture = {placeholder}")
     if system_type is not None:
-        where_clauses.append(
-            f"COALESCE(CONCAT(r.dmi_info->>'manufacturer', ' ', r.dmi_info->>'product'), 'Unknown') = ${param_idx}"
+        # This expression is safe - it only uses column references, no user input in SQL
+        placeholder = qb.add_param(system_type)
+        where_parts.append(
+            f"COALESCE(CONCAT(r.dmi_info->>'manufacturer', ' ', r.dmi_info->>'product'), 'Unknown') = {placeholder}"
         )
-        params.append(system_type)
-        param_idx += 1
 
-    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    # Build WHERE clause - always include br.value IS NOT NULL
+    if where_parts:
+        where_sql = "WHERE " + " AND ".join(where_parts) + " AND br.value IS NOT NULL"
+    else:
+        where_sql = "WHERE br.value IS NOT NULL"
 
-    # Upsert aggregated stats
+    # Upsert aggregated stats - query structure is static, only values are parameterized
     query = f"""
         INSERT INTO benchmark_stats (
             cpu_model, architecture, system_type, test_name, test_category, unit,
@@ -577,7 +642,6 @@ async def refresh_benchmark_stats(
         FROM benchmark_results br
         JOIN benchmark_runs r ON br.run_id = r.id
         {where_sql}
-        {"AND" if where_sql else "WHERE"} br.value IS NOT NULL
         GROUP BY
             r.cpu_model,
             r.architecture,
@@ -599,7 +663,7 @@ async def refresh_benchmark_stats(
             last_updated = CURRENT_TIMESTAMP
     """
 
-    await db.execute(query, *params)
+    await db.execute(query, *qb.get_params())
 
 
 @app.post(f"{settings.API_V1_PREFIX}/stats/refresh")
@@ -622,29 +686,31 @@ async def get_stats_by_test(
     Returns median values for comparison.
     """
     limit = min(limit, MAX_LIMIT)  # Enforce max limit
-    # Validate group_by
-    if group_by not in ("cpu", "system", "architecture"):
+
+    # Validate group_by against whitelist (prevents SQL injection via column name)
+    GROUP_BY_COLUMNS = {
+        "cpu": "cpu_model",
+        "system": "system_type",
+        "architecture": "architecture",
+    }
+    if group_by not in GROUP_BY_COLUMNS:
         group_by = "cpu"
+    select_extra = GROUP_BY_COLUMNS[group_by]
 
-    # Build query based on grouping
-    if group_by == "cpu":
-        select_extra = "cpu_model"
-    elif group_by == "system":
-        select_extra = "system_type"
-    else:  # architecture
-        select_extra = "architecture"
+    # Build query using QueryBuilder for safe parameterized queries
+    qb = QueryBuilder()
 
-    where_clauses = ["test_name = $1"]
-    params = [test_name]
-    param_idx = 2
+    # Build WHERE conditions
+    test_name_placeholder = qb.add_param(test_name)
+    where_parts = [f"test_name = {test_name_placeholder}"]
 
     if architecture:
-        where_clauses.append(f"architecture = ${param_idx}")
-        params.append(architecture)
-        param_idx += 1
+        arch_placeholder = qb.add_param(architecture)
+        where_parts.append(f"architecture = {arch_placeholder}")
 
-    where_sql = " AND ".join(where_clauses)
+    limit_placeholder = qb.add_param(limit)
 
+    # select_extra is from whitelist, safe to interpolate
     query = f"""
         SELECT
             {select_extra},
@@ -660,17 +726,16 @@ async def get_stats_by_test(
             sample_count,
             last_updated
         FROM benchmark_stats
-        WHERE {where_sql}
+        WHERE {" AND ".join(where_parts)}
         ORDER BY
             CASE
                 WHEN unit ILIKE '%second%' THEN median_value
                 ELSE -median_value
             END ASC NULLS LAST
-        LIMIT ${param_idx}
+        LIMIT {limit_placeholder}
     """
-    params.append(limit)
 
-    rows = await db.fetch(query, *params)
+    rows = await db.fetch(query, *qb.get_params())
     return [dict(row) for row in rows]
 
 
@@ -681,16 +746,15 @@ async def get_stats_by_cpu(
     _auth=Depends(require_auth_for_browsing),
 ):
     """Get all test statistics for a specific CPU model"""
-    where_clauses = ["cpu_model = $1"]
-    params = [cpu_model]
-    param_idx = 2
+    # Build query using QueryBuilder for safe parameterized queries
+    qb = QueryBuilder()
+
+    cpu_placeholder = qb.add_param(cpu_model)
+    where_parts = [f"cpu_model = {cpu_placeholder}"]
 
     if architecture:
-        where_clauses.append(f"architecture = ${param_idx}")
-        params.append(architecture)
-        param_idx += 1
-
-    where_sql = " AND ".join(where_clauses)
+        arch_placeholder = qb.add_param(architecture)
+        where_parts.append(f"architecture = {arch_placeholder}")
 
     query = f"""
         SELECT
@@ -708,11 +772,11 @@ async def get_stats_by_cpu(
             sample_count,
             last_updated
         FROM benchmark_stats
-        WHERE {where_sql}
+        WHERE {" AND ".join(where_parts)}
         ORDER BY test_category, test_name
     """
 
-    rows = await db.fetch(query, *params)
+    rows = await db.fetch(query, *qb.get_params())
     return [dict(row) for row in rows]
 
 
