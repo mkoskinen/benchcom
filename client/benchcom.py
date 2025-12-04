@@ -99,11 +99,16 @@ class BenchmarkRunner:
         for line in truncated:
             self.log(f"    {line}")
 
-    def run_command(self, cmd: List[str], timeout: int = 300) -> Tuple[str, int]:
+    def run_command(self, cmd: List[str], timeout: int = 300, env: Optional[Dict[str, str]] = None) -> Tuple[str, int]:
         """Run a command and return (output, return_code)"""
         try:
+            # Merge custom env with current environment
+            run_env = None
+            if env:
+                run_env = os.environ.copy()
+                run_env.update(env)
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout
+                cmd, capture_output=True, text=True, timeout=timeout, env=run_env
             )
             return result.stdout + result.stderr, result.returncode
         except subprocess.TimeoutExpired:
@@ -605,7 +610,8 @@ class BenchmarkRunner:
 
         # Run PassMark - it outputs to results_cpu.yml in current directory
         # -r 1 = CPU only, -r 2 = Memory only, -r 3 = All
-        output, ret = self.run_command([pt_cmd, "-r", "3"], timeout=900)
+        # Set TERM=xterm for headless environments (CI/GitHub Actions) where ncurses needs a terminal type
+        output, ret = self.run_command([pt_cmd, "-r", "3"], timeout=900, env={"TERM": "xterm"})
 
         # Find the results file (created in current working directory)
         results_files = list(Path.cwd().glob("results*.yml"))
