@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS benchmark_runs (
     -- Metadata
     is_anonymous BOOLEAN DEFAULT FALSE,
     benchmark_version VARCHAR(50) DEFAULT '1.0',
+    run_type_version INTEGER DEFAULT 1,
+    labels TEXT[],
     tags JSONB,
     notes TEXT,
 
@@ -55,6 +57,8 @@ CREATE INDEX idx_benchmark_runs_architecture ON benchmark_runs(architecture);
 CREATE INDEX idx_benchmark_runs_submitted_at ON benchmark_runs(submitted_at);
 CREATE INDEX idx_benchmark_runs_user_id ON benchmark_runs(user_id);
 CREATE INDEX idx_benchmark_runs_tags ON benchmark_runs USING GIN(tags);
+CREATE INDEX idx_benchmark_runs_labels ON benchmark_runs USING GIN(labels);
+CREATE INDEX idx_benchmark_runs_run_type_version ON benchmark_runs(run_type_version);
 
 -- Individual benchmark test results
 CREATE TABLE IF NOT EXISTS benchmark_results (
@@ -90,6 +94,8 @@ SELECT
     br.submitted_at,
     br.is_anonymous,
     br.benchmark_version,
+    br.run_type_version,
+    br.labels,
     u.username,
     COUNT(bres.id) as result_count
 FROM benchmark_runs br

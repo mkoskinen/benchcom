@@ -84,11 +84,26 @@ class BenchmarkRunCreate(BaseModel):
     benchmark_started_at: Optional[str] = None  # Accept as string, parse in endpoint
     benchmark_completed_at: Optional[str] = None  # Accept as string, parse in endpoint
     benchmark_version: str = Field("1.0", max_length=50)
+    run_type_version: Optional[int] = Field(1, ge=1, le=1000)
+    labels: Optional[List[str]] = Field(None, max_length=20)  # Max 20 labels
     tags: Optional[Dict[str, Any]] = None
     notes: Optional[str] = Field(None, max_length=10000)
     dmi_info: Optional[Dict[str, str]] = None
     console_output: Optional[str] = Field(None, max_length=MAX_CONSOLE_OUTPUT_LENGTH)
     results: List[BenchmarkResultCreate] = Field(..., max_length=MAX_RESULTS_PER_SUBMISSION)
+
+    @field_validator("labels")
+    @classmethod
+    def validate_labels(cls, v):
+        if v is None:
+            return None
+        # Validate each label
+        for label in v:
+            if len(label) > 50:
+                raise ValueError("Each label must be at most 50 characters")
+            if not label.strip():
+                raise ValueError("Labels cannot be empty")
+        return [label.strip() for label in v]
 
     @field_validator("tags")
     @classmethod
@@ -111,6 +126,8 @@ class BenchmarkRunResponse(BaseModel):
     submitted_at: datetime
     is_anonymous: bool
     benchmark_version: str
+    run_type_version: Optional[int]
+    labels: Optional[List[str]]
     username: Optional[str]
     result_count: int
     dmi_info: Optional[Dict[str, str]]
@@ -130,6 +147,8 @@ class BenchmarkRunDetail(BaseModel):
     submitted_at: datetime
     is_anonymous: bool
     benchmark_version: str
+    run_type_version: Optional[int]
+    labels: Optional[List[str]]
     tags: Optional[Dict[str, Any]]
     notes: Optional[str]
     dmi_info: Optional[Dict[str, str]]

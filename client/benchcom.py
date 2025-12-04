@@ -16,6 +16,9 @@ from typing import Optional, List, Dict, Any, Tuple
 
 # Version info
 BENCHCOM_VERSION = "1.1"
+# Run type version - increment when benchmark methodology/configuration changes
+# This helps distinguish results from different benchmark configurations
+RUN_TYPE_VERSION = 1
 
 
 class BenchmarkResult:
@@ -56,6 +59,7 @@ class BenchmarkRunner:
         api_password: Optional[str] = None,
         fast: bool = False,
         full: bool = False,
+        labels: Optional[List[str]] = None,
     ):
         self.hostname = socket.gethostname()
         self.start_time = datetime.now(timezone.utc)
@@ -67,6 +71,7 @@ class BenchmarkRunner:
         self.api_password = api_password
         self.fast = fast
         self.full = full
+        self.labels = labels or []
         self.tool_versions: Dict[str, str] = {}
 
         # Create output directory
@@ -1216,6 +1221,8 @@ class BenchmarkRunner:
             **system_info,
             "benchmark_started_at": self.start_time.isoformat(),
             "benchmark_completed_at": end_time.isoformat(),
+            "run_type_version": RUN_TYPE_VERSION,
+            "labels": self.labels if self.labels else None,
             "tags": {
                 "benchcom_version": BENCHCOM_VERSION,
                 "tool_versions": self.tool_versions,
@@ -1337,10 +1344,18 @@ def main():
         "--full", action="store_true", help="Full mode: run all benchmarks (passmark, openssl, sysbench, 7zip, disk I/O)"
     )
     parser.add_argument(
+        "--labels", help="Comma-separated labels for this run (e.g., 'github-actions,nightly,ubuntu-24')"
+    )
+    parser.add_argument(
         "--version", action="version", version=f"BENCHCOM v{BENCHCOM_VERSION}"
     )
 
     args = parser.parse_args()
+
+    # Parse comma-separated labels
+    labels = None
+    if args.labels:
+        labels = [l.strip() for l in args.labels.split(",") if l.strip()]
 
     runner = BenchmarkRunner(
         output_dir=args.output_dir,
@@ -1350,6 +1365,7 @@ def main():
         api_password=args.api_password,
         fast=args.fast,
         full=args.full,
+        labels=labels,
     )
 
     runner.run_all()
