@@ -140,6 +140,13 @@ function BenchmarkList({
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 <strong>{cropHostname(benchmark.hostname)}</strong>
+                {benchmark.labels && benchmark.labels.length > 0 && (
+                  <span className="labels-inline">
+                    {benchmark.labels.map((label, idx) => (
+                      <span key={idx} className="label-small">{label}</span>
+                    ))}
+                  </span>
+                )}
               </td>
               <td className="clickable" onClick={() => onSelect(benchmark.id)}>
                 {formatSystem(benchmark.dmi_info)}

@@ -148,6 +148,27 @@ function BenchmarkDetail({ benchmarkId, onBack }: BenchmarkDetailProps) {
               <td colSpan={5}>{formatDmiInfo(benchmark.dmi_info)}</td>
             </tr>
           )}
+          <tr>
+            <th>Version</th>
+            <td>
+              v{benchmark.benchmark_version}
+              {benchmark.run_type_version && (
+                <span className="run-type-version"> (run type {benchmark.run_type_version})</span>
+              )}
+            </td>
+            <th>Labels</th>
+            <td colSpan={3}>
+              {benchmark.labels && benchmark.labels.length > 0 ? (
+                <span className="labels">
+                  {benchmark.labels.map((label, idx) => (
+                    <span key={idx} className="label">{label}</span>
+                  ))}
+                </span>
+              ) : (
+                "—"
+              )}
+            </td>
+          </tr>
         </tbody>
       </table>
 

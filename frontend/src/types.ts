@@ -8,6 +8,8 @@ export interface Benchmark {
   submitted_at: string;
   is_anonymous: boolean;
   benchmark_version: string;
+  run_type_version: number | null;
+  labels: string[] | null;
   username: string | null;
   result_count: number;
   dmi_info: Record<string, string> | null;
@@ -27,6 +29,8 @@ export interface BenchmarkDetail {
   submitted_at: string;
   is_anonymous: boolean;
   benchmark_version: string;
+  run_type_version: number | null;
+  labels: string[] | null;
   tags: Record<string, any> | null;
   notes: string | null;
   dmi_info: Record<string, string> | null;
